@@ -1,4 +1,6 @@
 use crate::{append_crc, format_tlv, Currency, KhqrError, MerchantType};
+use alloc::format;
+use alloc::string::{String, ToString};
 
 const MAX_NAME: usize = 25;
 const MAX_CITY: usize = 15;

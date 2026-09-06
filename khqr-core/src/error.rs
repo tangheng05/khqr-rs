@@ -1,4 +1,5 @@
-use std::fmt;
+use alloc::string::String;
+use core::fmt;
 
 /// Everything that can go wrong reading or writing a KHQR payload.
 ///
@@ -124,4 +125,5 @@ impl fmt::Display for KhqrError {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for KhqrError {}

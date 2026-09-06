@@ -1,4 +1,7 @@
 use crate::{crc16_ccitt_false, parse_tlv, verify_crc, Currency, KhqrError, MerchantType, Tlv};
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 const ADDITIONAL_TAGS: [&str; 6] = ["01", "02", "03", "05", "07", "08"];
 

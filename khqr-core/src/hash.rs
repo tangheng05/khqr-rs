@@ -1,5 +1,6 @@
+use alloc::string::String;
+use core::fmt::Write;
 use md5::{Digest, Md5};
-use std::fmt::Write;
 
 /// The MD5 handle used to poll a payment, 32 lower case hex characters.
 ///

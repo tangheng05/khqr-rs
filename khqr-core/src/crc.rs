@@ -1,3 +1,5 @@
+use alloc::format;
+use alloc::string::String;
 /// Computes CRC-16/CCITT-FALSE: polynomial `0x1021`, init `0xFFFF`, no
 /// reflection, no final XOR.
 ///

@@ -1,4 +1,7 @@
 use crate::KhqrError;
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
 /// One tag-length-value triple.
 ///
@@ -48,45 +51,61 @@ pub fn format_tlv(tag: &str, value: &str) -> Result<String, KhqrError> {
 /// # Ok::<(), khqr_core::KhqrError>(())
 /// ```
 pub fn parse_tlv(input: &str) -> Result<Vec<Tlv>, KhqrError> {
-    // Sliced by character: byte indexing would split a Khmer character and panic.
-    let chars: Vec<char> = input.chars().collect();
     let mut fields = Vec::new();
-    let mut pos = 0;
+    let mut rest = input;
+    let mut offset = 0;
 
-    while pos < chars.len() {
-        let value_start = pos + 4;
-        if value_start > chars.len() {
-            return Err(KhqrError::UnexpectedEnd { offset: pos });
-        }
+    while !rest.is_empty() {
+        let (header, after_header) =
+            split_chars(rest, 4).ok_or(KhqrError::UnexpectedEnd { offset })?;
+        let (tag, length_field) =
+            split_chars(header, 2).ok_or(KhqrError::UnexpectedEnd { offset })?;
 
-        let tag: String = chars[pos..pos + 2].iter().collect();
-        if !is_tag(&tag) {
-            return Err(KhqrError::InvalidTag { tag });
-        }
-
-        let field: String = chars[pos + 2..value_start].iter().collect();
-        let Some(declared) = two_digit_value(&field) else {
-            return Err(KhqrError::InvalidLength { tag, length: field });
-        };
-
-        let available = chars.len() - value_start;
-        if declared > available {
-            return Err(KhqrError::Truncated {
-                tag,
-                declared,
-                available,
+        if !is_tag(tag) {
+            return Err(KhqrError::InvalidTag {
+                tag: tag.to_string(),
             });
         }
 
-        let value_end = value_start + declared;
+        let Some(declared) = two_digit_value(length_field) else {
+            return Err(KhqrError::InvalidLength {
+                tag: tag.to_string(),
+                length: length_field.to_string(),
+            });
+        };
+
+        let Some((value, remainder)) = split_chars(after_header, declared) else {
+            return Err(KhqrError::Truncated {
+                tag: tag.to_string(),
+                declared,
+                available: after_header.chars().count(),
+            });
+        };
+
         fields.push(Tlv {
-            tag,
-            value: chars[value_start..value_end].iter().collect(),
+            tag: tag.to_string(),
+            value: value.to_string(),
         });
-        pos = value_end;
+
+        offset += 4 + declared;
+        rest = remainder;
     }
 
     Ok(fields)
+}
+
+/// Splits after `count` characters. `None` if there are not that many, which
+/// keeps the byte offsets on character boundaries so slicing cannot panic.
+fn split_chars(input: &str, count: usize) -> Option<(&str, &str)> {
+    let mut characters = input.char_indices();
+
+    for _ in 0..count {
+        characters.next()?;
+    }
+
+    let at = characters.next().map_or(input.len(), |(index, _)| index);
+
+    Some(input.split_at(at))
 }
 
 fn is_tag(tag: &str) -> bool {

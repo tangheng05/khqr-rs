@@ -3,7 +3,10 @@
 //! KHQR payloads are EMVCo merchant-presented QR strings: nested
 //! tag-length-value triples closed by a CRC-16 checksum. No async runtime, no
 //! HTTP, so this stays usable from a CLI, a WASM bundle or a POS terminal.
+#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
+
+extern crate alloc;
 
 mod builder;
 mod crc;

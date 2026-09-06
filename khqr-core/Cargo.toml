@@ -13,9 +13,10 @@ authors.workspace = true
 
 [dependencies]
 image = { version = "0.25.6", default-features = false, features = ["png"], optional = true }
-md-5 = "0.10.6"
+md-5 = { version = "0.10.6", default-features = false }
 qrcode = { version = "0.14.1", default-features = false, optional = true, features = ["svg"] }
 
 [features]
-default = []
-image = ["dep:qrcode", "dep:image"]
+default = ["std"]
+std = []
+image = ["std", "dep:qrcode", "dep:image"]
