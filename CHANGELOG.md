@@ -3,7 +3,7 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
-## Unreleased
+## 0.1.3
 
 ### Changed
 
