@@ -32,6 +32,13 @@ pub enum KhqrError {
         /// Characters actually remaining.
         available: usize,
     },
+    /// The trailing checksum did not match the payload.
+    ChecksumMismatch {
+        /// The checksum the payload carried.
+        found: String,
+        /// The checksum its contents produce.
+        expected: String,
+    },
     /// A required field was never set.
     MissingField {
         /// Name of the missing field.
@@ -92,6 +99,9 @@ impl fmt::Display for KhqrError {
             }
             Self::ValueTooLong { tag, chars } => {
                 write!(f, "tag {tag} value is {chars} characters, the limit is 99")
+            }
+            Self::ChecksumMismatch { found, expected } => {
+                write!(f, "checksum is {found}, contents produce {expected}")
             }
             Self::MissingField { field } => {
                 write!(f, "{field} is required")

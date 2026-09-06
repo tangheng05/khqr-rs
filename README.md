@@ -32,6 +32,7 @@ khqr-rs/
     ├── src/
     │   ├── builder.rs  typed payload and its builder
     │   ├── crc.rs      crc-16/ccitt-false, checksum append and verify
+    │   ├── decoder.rs  payload in, flattened fields out
     │   ├── error.rs    one error type for the whole crate
     │   ├── lib.rs
     │   ├── tlv.rs      tag-length-value encode and decode
@@ -40,6 +41,7 @@ khqr-rs/
         ├── common/     published KHQR payloads used as reference vectors
         ├── builder.rs
         ├── crc.rs
+        ├── decoder.rs
         ├── tlv.rs
         └── vectors.rs
 ```
@@ -61,6 +63,17 @@ let qr = Khqr::individual("jonhsmith@nbcq")
 
 Riel is the default currency and gets no decimal places; dollars get two. An
 amount makes the QR single use, so tag `01` becomes `12` on its own.
+
+Reading one back flattens every nested template into a single struct.
+
+```rust
+let decoded = khqr_core::decode(&qr)?;
+assert_eq!(decoded.merchant_name, "Jonh Smith");
+```
+
+Tags the crate does not know are kept in `unknown` rather than rejected, since
+production QRs carry vendor extensions. A checksum that does not match is
+always an error.
 
 ## Building
 
