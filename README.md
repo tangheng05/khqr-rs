@@ -13,10 +13,10 @@ in if you need them.
 
 ## Documentation
 
-[Getting started](docs/getting-started.md) covers Rust, the CLI, the browser
-and the mobile bindings. Beyond that: [generating](docs/generating.md),
-[decoding](docs/decoding.md), [checking payments](docs/payments.md), and
-[the format itself](docs/format.md) if you need to read a payload by hand.
+[Getting started](https://github.com/tangheng05/khqr-rs/blob/main/docs/getting-started.md) covers Rust, the CLI, the browser
+and the mobile bindings. Beyond that: [generating](https://github.com/tangheng05/khqr-rs/blob/main/docs/generating.md),
+[decoding](https://github.com/tangheng05/khqr-rs/blob/main/docs/decoding.md), [checking payments](https://github.com/tangheng05/khqr-rs/blob/main/docs/payments.md), and
+[the format itself](https://github.com/tangheng05/khqr-rs/blob/main/docs/format.md) if you need to read a payload by hand.
 
 ## Status
 
@@ -219,7 +219,7 @@ seed.
 ## Versioning
 
 Minimum supported Rust version is 1.75, checked in CI. The API will change
-before 1.0, so pin an exact version. See [CHANGELOG.md](CHANGELOG.md).
+before 1.0, so pin an exact version. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
 ## Roadmap
 
@@ -246,4 +246,4 @@ unmodified. They are deliberately not bundled here.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/tangheng05/khqr-rs/blob/main/LICENSE).
