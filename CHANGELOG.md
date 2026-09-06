@@ -1,7 +1,27 @@
 # Changelog
 
-This project follows [semantic versioning](https://semver.org). Until 1.0 the
-minor version is where breaking changes land, so pin an exact version.
+This project follows [semantic versioning](https://semver.org). Until 1.0,
+behaviour can change in any release, including a patch: 0.1.1 both raised the
+minimum Rust version and made the decoder reject payloads it used to accept.
+Pin `"=0.1.5"` if you would rather review each change.
+
+## Unreleased
+
+### Fixed
+
+- The browser sample followed a build that leaves the renderers out, then
+  imported `toDataUri`. A named import of a missing export is a link error, so
+  the pasted sample killed the whole module.
+- The decoding guide left `DuplicateTag` and `InvalidField` out of its error
+  table, and did not say `KhqrError` is non exhaustive.
+- Two documents claimed a 403 always means the request came from outside
+  Cambodia. One endpoint answers 403 from inside reach.
+- `StaticQr` was described as something the single lookup returns. Only the
+  batch endpoints report it.
+- The expiry rationale counted three vectors carrying an amount with no expiry.
+  It is two.
+- The versioning policy said breaking changes wait for a minor release, while
+  0.1.1 raised the minimum Rust version and tightened the decoder.
 
 ## 0.1.5
 
@@ -134,13 +154,12 @@ minor version is where breaking changes land, so pin an exact version.
 ### Notes
 
 - Expiry is not required on dynamic QRs, though the official SDK has required
-  it since npm `bakong-khqr` v1.0.18. Three of the four published test vectors
-  carry an amount with no expiry, so enforcing it would reject the official
-  test data. This will be revisited before 1.0.
+  it since npm `bakong-khqr` v1.0.18. Two of the published test vectors carry an
+  amount with no expiry, so enforcing it would reject the official test data. This will be revisited before 1.0.
 - Amounts decode as strings rather than numbers, so a decode then encode round
   trip reproduces the input byte for byte.
 
 ## Compatibility
 
-Minimum supported Rust version is 1.88, checked in CI. Raising it is a minor
-version change before 1.0 and a major one after.
+Minimum supported Rust version is 1.88, checked in CI. Before 1.0 it can rise
+in any release, as it did in 0.1.1; after 1.0 that becomes a major change.

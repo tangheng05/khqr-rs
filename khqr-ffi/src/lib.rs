@@ -1,6 +1,6 @@
 //! Kotlin, Swift and Python bindings over `khqr-core`.
 //!
-//! Encoding only: no async runtime and no HTTP, so the same library works on a
+//! No async runtime and no HTTP, so the same library works on a
 //! phone, a POS terminal and a server.
 #![forbid(unsafe_code)]
 

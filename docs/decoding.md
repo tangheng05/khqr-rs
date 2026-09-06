@@ -27,6 +27,10 @@ in no published table. The ABA production vector in our test suite has a tag
 `68` nested inside tag `62` holding PayWay routing data. A parser that rejects
 what it does not recognise rejects real money.
 
+This leniency covers tags the crate does not recognise. A *repeat* of a tag it
+does know is refused, since the checksum is not a signature and a duplicate
+would let someone change the currency or the destination account.
+
 Unknown tags are kept rather than dropped:
 
 ```rust
@@ -108,6 +112,10 @@ byte character.
 | `UnexpectedEnd` | The payload stops part way through a tag and length. |
 | `Truncated` | A field declares more characters than remain. |
 | `InvalidTag`, `InvalidLength` | A tag or length was not two digits. |
+| `DuplicateTag` | A tag appeared twice. Leniency covers tags we do not know, not repeats of ones we do, because a repeat lets someone append a field and recompute the checksum. |
+| `InvalidField` | A timestamp that was not digits. |
+
+`KhqrError` is `#[non_exhaustive]`, so a `match` on it needs a wildcard arm.
 
 None of these panic. `decode` takes hostile input by design, so every path out
 of it is a `Result`.

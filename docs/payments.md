@@ -155,12 +155,13 @@ curl -i -X POST https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5 \
     -H "Content-Type: application/json" -d '{"md5":"test"}'
 ```
 
-`401` means you are through and only need a token. `403` means you need a
-Cambodian egress or a relay.
+`401` means you are through and only need a token. `403` means either a
+Cambodian egress is needed, or that endpoint is closed to you: see the section
+below, where one endpoint answers 403 from inside reach.
 
-**Static QRs cannot be tracked.** `check_transaction_by_md5` on a QR with no
-amount returns `StaticQr` in a batch response, and nothing useful otherwise.
-There is no single transaction to look up. Your receiving bank has to check
+**Static QRs cannot be tracked.** There is no single transaction to look up, so
+`check_transaction_by_md5` answers `NotFound` forever. Only the batch endpoints
+report `StaticQr`, and only they can tell you why. Your receiving bank has to check
 its own records. If you need to know who paid, generate a dynamic QR.
 
 ## Errors
@@ -174,7 +175,7 @@ its own records. If you need to know who paid, generate a dynamic QR.
 | `NoRenewalEmail` | Renewal was attempted with no email set. |
 | `BatchTooLarge` | More than 50 items. Caught before any request goes out. |
 | `BatchMismatch` | A batch answered with a different number of results than were asked about, so they cannot be lined up. |
-| `Http` | A non JSON error response. `Http { status: 403 }` is the geo restriction above. |
+| `Http` | A non JSON error response. `Http { status: 403 }` is either the geo restriction or an endpoint closed to your token. |
 
 `ApiError` is `#[non_exhaustive]`, so a `match` on it needs a wildcard arm.
 

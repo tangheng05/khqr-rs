@@ -1,8 +1,7 @@
 # Generating a payload
 
 `Khqr::individual` is for a personal Bakong account, `Khqr::merchant` for a
-business. The difference is which tag the account details go in, `29` or `30`,
-and that a merchant can carry a merchant ID.
+business. The difference is which tag the account details go in, `29` or `30`.
 
 ```rust
 use khqr_core::{Currency, Khqr};
@@ -91,7 +90,8 @@ character such as a newline or a null.
 Name and city are required. The category code defaults to `5999`, which means
 a general merchant, and the country code defaults to `KH`.
 
-The account ID has to look like `name@bank`. One `@`, something on each side.
+The account ID has to look like `name@bank`: one `@`, something on each side,
+and no spaces or control characters.
 
 Counting is by character, not by byte. A Khmer name is three bytes per
 character, and the length field in the payload counts characters, so the two

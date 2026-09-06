@@ -22,7 +22,7 @@ and the mobile bindings. Beyond that: [generating](https://github.com/tangheng05
 ## Status
 
 All five crates are published and checked against the live Bakong API. The API
-will change before 1.0, so pin an exact version.
+will change before 1.0.
 
 | Crate | Purpose |
 | --- | --- |
@@ -68,8 +68,8 @@ khqr-rs/
         ├── builder.rs
         ├── crc.rs
         ├── decoder.rs
-        ├── docs_snippets.rs the examples from docs/, compiled
-        ├── hostile.rs       forty thousand mutated payloads
+        ├── docs_snippets.rs the khqr-core examples from docs/, compiled
+        ├── hostile.rs       twenty thousand random and twenty thousand mutated
         ├── qr.rs
         ├── tlv.rs
         └── vectors.rs
@@ -144,8 +144,9 @@ if status.is_pending() {
 A rejected token is renewed once and the call retried, so the 90 day expiry
 does not surface as a failure. An `Http { status: 403 }` means either the
 request came from outside Cambodia, which Bakong blocks, or the endpoint is
-closed to your token. `check_transaction_by_md5_list` currently answers 403 on
-production for everyone; use single lookups or `check_transaction_by_hash_list`.
+closed to your token. `check_transaction_by_md5_list` answered 403 on production for
+every request shape we tried; use single lookups or
+`check_transaction_by_hash_list`.
 
 ## Command line
 
@@ -155,7 +156,7 @@ cargo install khqr-cli
 khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh" \
     --amount 5000 --expires-in 300 --png qr.png
 khqr decode "0002010102..."
-khqr verify "0002010102..."          # exits non zero if the checksum is wrong
+khqr verify "0002010102..."          # exits non zero if it does not decode
 BAKONG_TOKEN=... khqr watch --md5 682f33ec80e311d909f91d70a70ab436
 ```
 
@@ -172,13 +173,6 @@ side with no server round trip.
 wasm-pack build khqr-wasm --target web
 ```
 
-Rendering is on by default and costs most of the bundle: 260KB with it, 113KB
-without. Turn it off if you already draw the QR with a JS library.
-
-```sh
-wasm-pack build khqr-wasm --target web -- --no-default-features
-```
-
 ```js
 import init, { Khqr, toDataUri } from "./pkg/khqr_wasm.js";
 
@@ -190,6 +184,15 @@ qr.merchantCity("Phnom Penh");
 qr.amount(5000);
 
 document.querySelector("img").src = toDataUri(qr.build(), 512);
+```
+
+Rendering is on by default and costs most of the bundle: 260KB with it, 113KB
+without. Turn it off if you already draw the QR with a JS library, and drop
+`toDataUri`, `toPng` and `toSvg` from your imports, since that build does not
+export them.
+
+```sh
+wasm-pack build khqr-wasm --target web -- --no-default-features
 ```
 
 ## Kotlin, Swift and Python
@@ -247,7 +250,11 @@ seed.
 ## Versioning
 
 Minimum supported Rust version is 1.88, checked in CI against that exact
-toolchain. The API will change before 1.0, so pin an exact version. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
+toolchain.
+
+Before 1.0 any release may change behaviour, including a patch. The snippets
+here use `"0.1"`; pin `"=0.1.5"` instead if you would rather review each
+change yourself. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
 ## License
 

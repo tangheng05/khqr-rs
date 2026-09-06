@@ -1,6 +1,6 @@
 //! Browser and Node bindings over `khqr-core`.
 //!
-//! Encoding only: no async runtime, no HTTP, so a KHQR payload can be built
+//! No async runtime, no HTTP, so a KHQR payload can be built
 //! and rendered client side with no server round trip.
 #![forbid(unsafe_code)]
 

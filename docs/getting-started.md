@@ -64,13 +64,6 @@ any parsing.
 wasm-pack build khqr-wasm --target web
 ```
 
-The PNG and SVG renderers account for more than half the bundle, 260KB against
-113KB. If your page already draws QR codes with a JS library, leave them out:
-
-```sh
-wasm-pack build khqr-wasm --target web -- --no-default-features
-```
-
 ```js
 import init, { Khqr, toDataUri, md5 } from "./pkg/khqr_wasm.js";
 
@@ -87,6 +80,15 @@ document.querySelector("img").src = toDataUri(qr, 512);
 
 Setters mutate the builder rather than returning it. That is deliberate: a
 chained call would move the object and free the handle you were holding.
+
+The PNG and SVG renderers account for more than half the bundle, 260KB against
+113KB. If your page already draws QR codes with a JS library, leave them out.
+That build exports no `toSvg`, `toPng` or `toDataUri`, so remove them from your
+imports as well, or the module will fail to load.
+
+```sh
+wasm-pack build khqr-wasm --target web -- --no-default-features
+```
 
 Nothing here talks to the network, so a web front end can generate a QR with
 no server round trip. Checking payment still needs a server, because that
