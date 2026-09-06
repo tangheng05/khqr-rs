@@ -19,7 +19,7 @@ is being written phase by phase. Not on crates.io yet, and the API will change.
 | Crate | Purpose | State |
 | --- | --- | --- |
 | `khqr-core` | TLV codec, CRC16, builder, decoder, MD5, images | usable |
-| `khqr-api` | Bakong Open API client | planned |
+| `khqr-api` | Bakong Open API client | usable |
 | `khqr-cli` | `khqr gen`, `decode`, `verify`, `watch` | planned |
 | `khqr-wasm` | browser and Node bindings | planned |
 
@@ -28,6 +28,14 @@ is being written phase by phase. Not on crates.io yet, and the API will change.
 ```
 khqr-rs/
 ├── Cargo.toml          workspace manifest
+├── khqr-api/
+│   ├── src/
+│   │   ├── backoff.rs  how long to wait before polling again
+│   │   ├── client.rs   the endpoints
+│   │   ├── error.rs
+│   │   ├── lib.rs
+│   │   └── model.rs    request and response shapes
+│   └── tests/          driven against a mock server, no token needed
 └── khqr-core/
     ├── src/
     │   ├── builder.rs  typed payload and its builder
@@ -91,6 +99,25 @@ khqr-core = { version = "0.1", features = ["image"] }
 let png = khqr_core::to_png(&qr, 512)?;
 let svg = khqr_core::to_svg(&qr)?;
 ```
+
+Polling for payment is driven by you, never by a timer inside the client.
+
+```rust
+use khqr_api::{BakongClient, Backoff, Environment};
+
+let client = BakongClient::new(Environment::Production, token)
+    .with_renewal_email("you@example.com");
+let mut backoff = Backoff::new();
+
+let status = client.check_transaction_by_md5(&khqr_core::md5(&qr)).await?;
+if status.is_pending() {
+    tokio::time::sleep(backoff.next_delay()).await;
+}
+```
+
+A rejected token is renewed once and the call retried, so the 90 day expiry
+does not surface as a failure. Bakong geo-restricts, so expect HTTP 403 if you
+run this outside Cambodia.
 
 ## Building
 
