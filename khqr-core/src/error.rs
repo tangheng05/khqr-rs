@@ -1,27 +1,14 @@
 use std::fmt;
 
-/// Everything that can go wrong while reading or writing a KHQR payload.
+/// Everything that can go wrong reading or writing a KHQR payload.
 ///
-/// Offsets and lengths are counted in characters, not bytes, because that is
-/// what the EMVCo length field measures.
-///
-/// # Examples
-///
-/// ```
-/// use khqr_core::{parse_tlv, KhqrError};
-///
-/// let err = parse_tlv("5905ab").unwrap_err();
-/// assert_eq!(
-///     err,
-///     KhqrError::Truncated { tag: "59".to_string(), declared: 5, available: 2 }
-/// );
-/// ```
+/// Offsets and lengths count characters, not bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum KhqrError {
     /// A tag was not two ASCII digits.
     InvalidTag {
-        /// The offending tag, as read from the payload.
+        /// The offending tag.
         tag: String,
     },
     /// A length field was not two ASCII digits.
@@ -33,7 +20,7 @@ pub enum KhqrError {
     },
     /// The payload ran out before a full four character header could be read.
     UnexpectedEnd {
-        /// Character offset where the partial header starts.
+        /// Where the partial header starts.
         offset: usize,
     },
     /// A field declared more characters than the payload had left.
@@ -45,7 +32,7 @@ pub enum KhqrError {
         /// Characters actually remaining.
         available: usize,
     },
-    /// A value was longer than the two digit length field can express.
+    /// A value was longer than a two digit length field can express.
     ValueTooLong {
         /// The tag being written.
         tag: String,

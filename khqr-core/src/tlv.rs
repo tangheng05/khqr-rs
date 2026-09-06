@@ -2,17 +2,8 @@ use crate::KhqrError;
 
 /// One tag-length-value triple.
 ///
-/// The value of a template tag such as `62` is itself a run of triples, so
-/// feeding it back to [`parse_tlv`] descends one level.
-///
-/// # Examples
-///
-/// ```
-/// use khqr_core::Tlv;
-///
-/// let field = Tlv { tag: "58".to_string(), value: "KH".to_string() };
-/// assert_eq!(field.tag, "58");
-/// ```
+/// A template tag's value is itself a run of triples, so feeding it back to
+/// [`parse_tlv`] descends one level.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tlv {
     /// Two ASCII digits identifying the field.
@@ -21,23 +12,11 @@ pub struct Tlv {
     pub value: String,
 }
 
-/// Writes one triple: the tag, the value's length as two digits, then the value.
-///
-/// The length is a count of characters, matching the EMVCo specification and
-/// the behaviour of the reference JavaScript SDK for Khmer text.
-///
-/// # Errors
-///
-/// Returns [`KhqrError::InvalidTag`] if the tag is not two ASCII digits, and
-/// [`KhqrError::ValueTooLong`] if the value exceeds 99 characters.
-///
-/// # Examples
+/// Writes one triple: the tag, the value's character count as two digits, then
+/// the value.
 ///
 /// ```
-/// use khqr_core::format_tlv;
-///
-/// assert_eq!(format_tlv("00", "01")?, "000201");
-/// assert_eq!(format_tlv("59", "Jonh Smith")?, "5910Jonh Smith");
+/// assert_eq!(khqr_core::format_tlv("59", "Jonh Smith")?, "5910Jonh Smith");
 /// # Ok::<(), khqr_core::KhqrError>(())
 /// ```
 pub fn format_tlv(tag: &str, value: &str) -> Result<String, KhqrError> {
@@ -60,28 +39,16 @@ pub fn format_tlv(tag: &str, value: &str) -> Result<String, KhqrError> {
 
 /// Reads a run of triples until the input is exhausted.
 ///
-/// An empty input yields an empty vector. Unknown tags are returned as they
-/// are found; deciding what they mean is the decoder's job, not this one's.
-///
-/// # Errors
-///
-/// Returns [`KhqrError::InvalidTag`] or [`KhqrError::InvalidLength`] for a
-/// malformed header, [`KhqrError::UnexpectedEnd`] if the input stops part way
-/// through a header, and [`KhqrError::Truncated`] if a value is cut short.
-///
-/// # Examples
+/// Unknown tags come back as they are found. Deciding what they mean is the
+/// decoder's job.
 ///
 /// ```
-/// use khqr_core::parse_tlv;
-///
-/// let fields = parse_tlv("0002015802KH")?;
-/// assert_eq!(fields[0].value, "01");
-/// assert_eq!(fields[1].tag, "58");
+/// let fields = khqr_core::parse_tlv("0002015802KH")?;
+/// assert_eq!(fields[1].value, "KH");
 /// # Ok::<(), khqr_core::KhqrError>(())
 /// ```
 pub fn parse_tlv(input: &str) -> Result<Vec<Tlv>, KhqrError> {
-    // Collected up front so the loop can slice by character. Indexing a &str
-    // by byte would split a Khmer character in half and panic.
+    // Sliced by character: byte indexing would split a Khmer character and panic.
     let chars: Vec<char> = input.chars().collect();
     let mut fields = Vec::new();
     let mut pos = 0;

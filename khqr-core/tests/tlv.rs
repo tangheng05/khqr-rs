@@ -4,7 +4,7 @@ mod common;
 
 use khqr_core::{format_tlv, parse_tlv, Tlv};
 
-/// Tags whose value is itself a run of TLV triples.
+/// Tags whose value is itself a run of triples.
 const TEMPLATE_TAGS: [&str; 5] = ["29", "30", "62", "64", "99"];
 
 fn encode(fields: &[Tlv]) -> String {

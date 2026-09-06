@@ -1,17 +1,8 @@
-/// Computes CRC-16/CCITT-FALSE over the given bytes.
+/// Computes CRC-16/CCITT-FALSE: polynomial `0x1021`, init `0xFFFF`, no
+/// reflection, no final XOR.
 ///
-/// Polynomial `0x1021`, initial value `0xFFFF`, no input or output reflection
-/// and no final XOR. KHQR runs it over the UTF-8 bytes of the whole payload,
-/// including the literal `6304` that introduces the checksum field.
-///
-/// # Examples
-///
-/// ```
-/// use khqr_core::crc16_ccitt_false;
-///
-/// // The check value every CRC-16/CCITT-FALSE implementation agrees on.
-/// assert_eq!(crc16_ccitt_false(b"123456789"), 0x29B1);
-/// ```
+/// KHQR runs it over the UTF-8 bytes of the whole payload, including the
+/// literal `6304` that introduces the checksum field.
 pub fn crc16_ccitt_false(data: &[u8]) -> u16 {
     let mut crc: u16 = 0xFFFF;
 
@@ -30,19 +21,13 @@ pub fn crc16_ccitt_false(data: &[u8]) -> u16 {
     crc
 }
 
-/// Closes a payload by appending the checksum field.
+/// Closes a payload by appending `6304` and the checksum.
 ///
-/// Pass everything before the checksum, with no `63` tag of its own. The tag,
-/// its length and four uppercase hex digits are added for you.
-///
-/// # Examples
+/// Pass everything before it, with no `63` tag of its own.
 ///
 /// ```
-/// use khqr_core::{append_crc, verify_crc};
-///
-/// let qr = append_crc("0002010102115802KH");
+/// let qr = khqr_core::append_crc("0002010102115802KH");
 /// assert_eq!(qr, "0002010102115802KH6304A3A4");
-/// assert!(verify_crc(&qr));
 /// ```
 pub fn append_crc(payload: &str) -> String {
     let mut qr = String::with_capacity(payload.len() + 8);
@@ -53,29 +38,17 @@ pub fn append_crc(payload: &str) -> String {
     format!("{qr}{checksum:04X}")
 }
 
-/// Reports whether a complete payload ends in a checksum field that matches.
+/// Reports whether a payload ends in a `6304` field matching its contents.
 ///
-/// Hex digits are accepted in either case, though [`append_crc`] always writes
-/// them upper case. Anything too short, or not ending in a `6304` field, is
-/// simply invalid.
-///
-/// # Examples
-///
-/// ```
-/// use khqr_core::verify_crc;
-///
-/// assert!(verify_crc("0002010102115802KH6304A3A4"));
-/// assert!(!verify_crc("0002010102115802KH63040000"));
-/// assert!(!verify_crc("0002010102115802KH"));
-/// ```
+/// Hex is accepted in either case. Anything too short, or not ending in a
+/// `6304` field, is invalid.
 pub fn verify_crc(qr: &str) -> bool {
     let total = qr.chars().count();
     if total < 8 {
         return false;
     }
 
-    // Split by character, not by byte: a corrupt payload can end mid way
-    // through a multi-byte character and byte slicing would panic.
+    // Split by character: a corrupt payload can end mid character.
     let body: String = qr.chars().take(total - 4).collect();
     if !body.ends_with("6304") {
         return false;

@@ -1,7 +1,7 @@
 //! Published KHQR payloads used as the reference vectors for every phase.
 //!
-//! All four are real and CRC-valid. Nothing in here depends on `khqr_core`,
-//! so the vectors can be trusted while the implementation is still moving.
+//! Nothing here depends on `khqr_core`, so the vectors stay trustworthy while
+//! the implementation moves.
 
 // Each test binary pulls in the whole module but uses only part of it.
 #![allow(dead_code)]

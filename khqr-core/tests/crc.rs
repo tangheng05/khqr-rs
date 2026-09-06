@@ -4,10 +4,9 @@ mod common;
 
 use khqr_core::{append_crc, crc16_ccitt_false, verify_crc};
 
-/// The trailing checksum of each vector in [`common::ALL`], in order.
+/// Trailing checksum of each vector in [`common::ALL`], in order.
 const EXPECTED: [&str; 4] = ["6894", "33E1", "9ACF", "9FBD"];
 
-/// Splits off the four character checksum, leaving the body ending in `6304`.
 fn body(qr: &str) -> &str {
     &qr[..qr.len() - 4]
 }
