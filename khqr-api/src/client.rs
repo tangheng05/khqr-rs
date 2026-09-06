@@ -91,6 +91,10 @@ impl BakongClient {
     }
 
     /// Whether `name@bank` is a real Bakong account.
+    ///
+    /// The live endpoint answers without a token, so this works before you have
+    /// one. `false` means Bakong said the account does not exist; a failure to
+    /// reach it is an error instead.
     pub async fn check_bakong_account(&self, account_id: &str) -> Result<bool, ApiError> {
         let envelope: Envelope<Value> = self
             .post(

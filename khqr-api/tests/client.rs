@@ -133,7 +133,7 @@ async fn an_unknown_account_is_reported() {
     mount(
         &server,
         "/v1/check_bakong_account",
-        json!({ "responseCode": 1, "errorCode": 4, "data": null }),
+        json!({ "responseCode": 1, "responseMessage": "Account not found", "errorCode": 11, "data": null }),
     )
     .await;
 

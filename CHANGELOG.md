@@ -3,6 +3,19 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
+## Unreleased
+
+### Changed
+
+- Checked against the live Bakong service for the first time. Confirmed:
+  `check_bakong_account` needs no token and returns `errorCode: 11` for an
+  unknown account; an expired token gives HTTP 401 with an envelope on most
+  endpoints but a bare nginx HTML 403 on `check_transaction_by_md5_list`;
+  and `generate_deeplink_by_qr` reports its own failures with HTTP 200 and a
+  non zero `responseCode`. The client handles all four correctly.
+- The 403 message no longer asserts geography, since the live service also
+  returns 403 for an endpoint a token cannot reach.
+
 ## 0.1.1
 
 ### Fixed

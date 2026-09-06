@@ -58,7 +58,7 @@ impl fmt::Display for ApiError {
             Self::Http { status } => match status {
                 403 => write!(
                     f,
-                    "bakong refused with http 403, which usually means the request came from outside cambodia"
+                    "bakong refused with http 403, which means either the endpoint is closed to this token or the request came from outside cambodia"
                 ),
                 other => write!(f, "bakong returned http {other}"),
             },

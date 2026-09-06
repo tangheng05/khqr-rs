@@ -84,7 +84,7 @@ checks that before making a request rather than letting Bakong reject it.
 | `check_transaction_by_short_hash` | short hash, plus amount and currency |
 | `check_transaction_by_instruction_ref` | the sender's instruction reference |
 | `check_transaction_by_external_ref` | your own reference |
-| `check_bakong_account` | whether `name@bank` exists |
+| `check_bakong_account` | whether `name@bank` exists, and needs no token |
 | `generate_deeplink` | a `bakong.page.link` the Bakong app can open |
 | `renew_token` | your registered email |
 
