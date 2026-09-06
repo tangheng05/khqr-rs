@@ -235,20 +235,6 @@ seed.
 Minimum supported Rust version is 1.88, checked in CI against that exact
 toolchain. The API will change before 1.0, so pin an exact version. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
-## Notes on the spec
-
-Two things are easy to get wrong and both break the checksum:
-
-- Lengths count characters of the value and are always two digits, so `04` and not `4`.
-- KHR amounts carry no decimals, USD amounts carry two.
-
-Any QR with an amount is dynamic, so tag `01` becomes `12`. A QR without an amount
-is static and cannot be tracked by MD5. Tag `99` can carry an expiry, which this
-library does not require.
-
-The KHQR logo and card assets belong to the National Bank of Cambodia and must be used
-unmodified. They are deliberately not bundled here.
-
 ## License
 
 MIT. See [LICENSE](https://github.com/tangheng05/khqr-rs/blob/main/LICENSE).
