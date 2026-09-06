@@ -41,15 +41,6 @@ look up. Your bank has to check its own records instead.
 
 If you are building a checkout, you want an amount.
 
-## Is it proven
-
-Yes, on the path that matters. A QR built by this library was scanned by a
-banking app, paid, and then found again through the API by MD5 handle, full
-hash, short hash, external reference and hash batch, against production.
-
-The codec is checked against the four published KHQR vectors on every commit,
-and the decoder is fuzzed.
-
 ## Versioning
 
 The API will change before 1.0. Pin an exact version until then.
