@@ -1,0 +1,19 @@
+[package]
+name = "khqr-wasm"
+description = "Browser and Node bindings for Cambodia's KHQR payment QR standard"
+keywords = ["khqr", "bakong", "cambodia", "wasm", "qr"]
+categories = ["wasm"]
+readme = "../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+khqr-core = { workspace = true, features = ["image"] }
+wasm-bindgen = "0.2.117"

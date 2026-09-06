@@ -20,14 +20,16 @@ is being written phase by phase. Not on crates.io yet, and the API will change.
 | --- | --- | --- |
 | `khqr-core` | TLV codec, CRC16, builder, decoder, MD5, images | usable |
 | `khqr-api` | Bakong Open API client | usable |
-| `khqr-cli` | `khqr gen`, `decode`, `verify`, `watch` | planned |
-| `khqr-wasm` | browser and Node bindings | planned |
+| `khqr-cli` | `khqr gen`, `decode`, `verify`, `watch` | usable |
+| `khqr-wasm` | browser and Node bindings | usable |
 
 ## Layout
 
 ```
 khqr-rs/
 ├── Cargo.toml          workspace manifest
+├── khqr-cli/           the khqr binary
+├── khqr-wasm/          wasm-bindgen over khqr-core
 ├── khqr-api/
 │   ├── src/
 │   │   ├── backoff.rs  how long to wait before polling again
@@ -123,11 +125,46 @@ A rejected token is renewed once and the call retried, so the 90 day expiry
 does not surface as a failure. Bakong geo-restricts, so expect HTTP 403 if you
 run this outside Cambodia.
 
+## Command line
+
+```sh
+cargo install --path khqr-cli
+
+khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh"     --amount 5000 --expires-in 300 --png qr.png
+khqr decode "0002010102..."
+khqr verify "0002010102..."          # exits non zero if the checksum is wrong
+BAKONG_TOKEN=... khqr watch --md5 682f33ec80e311d909f91d70a70ab436
+```
+
+`gen` prints the payload and its MD5 handle, then writes the images you asked
+for. `watch` polls with the same backoff the library uses and gives up after
+five minutes by default.
+
+## Browser and Node
+
+`khqr-wasm` wraps the codec only, so a payload can be built and rendered client
+side with no server round trip.
+
+```sh
+wasm-pack build khqr-wasm --target web
+```
+
+```js
+const qr = new Khqr.individual("shop@aclb");
+qr.merchantName("Coffee Klaing");
+qr.merchantCity("Phnom Penh");
+qr.amount(5000);
+const payload = qr.build();
+
+document.querySelector("img").src = toDataUri(payload, 512);
+```
+
 ## Building
 
 ```sh
 cargo test --workspace --all-features
 cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo clippy -p khqr-wasm --target wasm32-unknown-unknown -- -D warnings
 cargo fmt --all --check
 ```
 

@@ -1,0 +1,139 @@
+use clap::{Args as ClapArgs, ValueEnum};
+use khqr_core::{md5, to_png, to_svg, Currency, Khqr, KhqrBuilder};
+use std::error::Error;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
+pub enum CurrencyArg {
+    Khr,
+    Usd,
+}
+
+impl From<CurrencyArg> for Currency {
+    fn from(currency: CurrencyArg) -> Self {
+        match currency {
+            CurrencyArg::Khr => Self::Khr,
+            CurrencyArg::Usd => Self::Usd,
+        }
+    }
+}
+
+#[derive(ClapArgs)]
+pub struct Args {
+    /// Bakong account, as name@bank.
+    #[arg(long)]
+    account: String,
+    /// Merchant name, at most 25 characters.
+    #[arg(long)]
+    name: String,
+    /// Merchant city, at most 15 characters.
+    #[arg(long)]
+    city: String,
+    /// Amount. Leaving it out makes a reusable static QR.
+    #[arg(long)]
+    amount: Option<f64>,
+    #[arg(long, value_enum, default_value_t = CurrencyArg::Khr)]
+    currency: CurrencyArg,
+    /// Write to tag 30 as a business rather than tag 29 as a person.
+    #[arg(long)]
+    merchant: bool,
+    #[arg(long)]
+    merchant_id: Option<String>,
+    #[arg(long)]
+    acquiring_bank: Option<String>,
+    #[arg(long)]
+    bill_number: Option<String>,
+    #[arg(long)]
+    mobile_number: Option<String>,
+    #[arg(long)]
+    store_label: Option<String>,
+    #[arg(long)]
+    terminal_label: Option<String>,
+    /// Merchant category code.
+    #[arg(long)]
+    mcc: Option<String>,
+    /// Seconds until the QR expires.
+    #[arg(long)]
+    expires_in: Option<u64>,
+    /// Write a PNG here.
+    #[arg(long)]
+    png: Option<PathBuf>,
+    /// Write an SVG here.
+    #[arg(long)]
+    svg: Option<PathBuf>,
+    /// Width of the PNG in pixels.
+    #[arg(long, default_value_t = 512)]
+    size: u32,
+}
+
+pub fn run(args: &Args) -> Result<(), Box<dyn Error>> {
+    let created_at = now_ms()?;
+    let mut builder = if args.merchant {
+        Khqr::merchant(&args.account)
+    } else {
+        Khqr::individual(&args.account)
+    };
+
+    builder = builder
+        .merchant_name(&args.name)
+        .merchant_city(&args.city)
+        .currency(args.currency.into())
+        .created_at_ms(created_at);
+
+    if let Some(amount) = args.amount {
+        builder = builder.amount(amount);
+    }
+    if let Some(seconds) = args.expires_in {
+        builder = builder.expires_at_ms(created_at + seconds * 1_000);
+    }
+
+    builder = optional(builder, args);
+
+    let qr = builder.build()?.to_qr_string()?;
+    println!("{qr}");
+    println!("md5 {}", md5(&qr));
+
+    if let Some(path) = &args.png {
+        std::fs::write(path, to_png(&qr, args.size)?)?;
+        println!("png {}", path.display());
+    }
+    if let Some(path) = &args.svg {
+        std::fs::write(path, to_svg(&qr)?)?;
+        println!("svg {}", path.display());
+    }
+
+    Ok(())
+}
+
+fn optional(mut builder: KhqrBuilder, args: &Args) -> KhqrBuilder {
+    if let Some(value) = &args.merchant_id {
+        builder = builder.merchant_id(value);
+    }
+    if let Some(value) = &args.acquiring_bank {
+        builder = builder.acquiring_bank(value);
+    }
+    if let Some(value) = &args.bill_number {
+        builder = builder.bill_number(value);
+    }
+    if let Some(value) = &args.mobile_number {
+        builder = builder.mobile_number(value);
+    }
+    if let Some(value) = &args.store_label {
+        builder = builder.store_label(value);
+    }
+    if let Some(value) = &args.terminal_label {
+        builder = builder.terminal_label(value);
+    }
+    if let Some(value) = &args.mcc {
+        builder = builder.merchant_category_code(value);
+    }
+
+    builder
+}
+
+fn now_ms() -> Result<u64, Box<dyn Error>> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+
+    Ok(u64::try_from(millis)?)
+}

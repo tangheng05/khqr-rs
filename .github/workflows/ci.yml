@@ -21,3 +21,5 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-features
       - run: cargo test --workspace
+      - run: rustup target add wasm32-unknown-unknown
+      - run: cargo clippy -p khqr-wasm --target wasm32-unknown-unknown -- -D warnings

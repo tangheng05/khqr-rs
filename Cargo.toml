@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["khqr-api", "khqr-core"]
+members = ["khqr-api", "khqr-cli", "khqr-core", "khqr-wasm"]
 
 [workspace.package]
 version = "0.1.0"
@@ -11,4 +11,5 @@ repository = "https://github.com/tangheng05/khqr-rs"
 authors = ["Draxler <76139625+tangheng05@users.noreply.github.com>"]
 
 [workspace.dependencies]
+khqr-api = { path = "khqr-api", version = "0.1.0" }
 khqr-core = { path = "khqr-core", version = "0.1.0" }
