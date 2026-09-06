@@ -188,7 +188,7 @@ message from Bakong is preserved rather than replaced with a status code.
 rather use the platform's:
 
 ```toml
-khqr-api = { version = "0.1", default-features = false, features = ["native-tls"] }
+khqr-api = { version = "0.2", default-features = false, features = ["native-tls"] }
 ```
 
 ## Keep the token on your server

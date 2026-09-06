@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "khqr-api"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "reqwest",
  "serde",
@@ -1043,7 +1043,7 @@ dependencies = [
 
 [[package]]
 name = "khqr-cli"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "clap",
  "khqr-api",
@@ -1053,7 +1053,7 @@ dependencies = [
 
 [[package]]
 name = "khqr-core"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "image",
  "md-5",
@@ -1062,7 +1062,7 @@ dependencies = [
 
 [[package]]
 name = "khqr-ffi"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "khqr-core",
  "uniffi",
@@ -1070,7 +1070,7 @@ dependencies = [
 
 [[package]]
 name = "khqr-wasm"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "khqr-core",
  "wasm-bindgen",

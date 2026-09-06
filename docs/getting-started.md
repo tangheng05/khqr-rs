@@ -7,13 +7,13 @@ payload string, because they all wrap the same Rust codec.
 
 ```toml
 [dependencies]
-khqr-core = "0.1"
+khqr-core = "0.2"
 ```
 
 Add the `image` feature if you want PNG or SVG output:
 
 ```toml
-khqr-core = { version = "0.1", features = ["image"] }
+khqr-core = { version = "0.2", features = ["image"] }
 ```
 
 ```rust

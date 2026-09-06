@@ -3,9 +3,9 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0,
 behaviour can change in any release, including a patch: 0.1.1 both raised the
 minimum Rust version and made the decoder reject payloads it used to accept.
-Pin `"=0.1.5"` if you would rather review each change.
+Pin `"=0.2.0"` if you would rather review each change.
 
-## Unreleased
+## 0.2.0
 
 ### Added
 

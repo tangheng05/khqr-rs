@@ -114,7 +114,7 @@ dynamic QRs only, since a static one has no amount to track.
 Images live behind the `image` feature, off by default:
 
 ```toml
-khqr-core = { version = "0.1", features = ["image"] }
+khqr-core = { version = "0.2", features = ["image"] }
 ```
 
 ```rust
@@ -253,7 +253,7 @@ Minimum supported Rust version is 1.88, checked in CI against that exact
 toolchain.
 
 Before 1.0 any release may change behaviour, including a patch. The snippets
-here use `"0.1"`; pin `"=0.1.5"` instead if you would rather review each
+here use `"0.2"`; pin `"=0.2.0"` instead if you would rather review each
 change yourself. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
 ## License
