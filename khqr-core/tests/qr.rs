@@ -26,7 +26,9 @@ fn a_handle_is_thirty_two_lower_case_hex_characters() {
 #[cfg(feature = "image")]
 mod images {
     use super::common;
-    use khqr_core::{to_base64_uri, to_png, to_svg};
+    use khqr_core::{
+        to_base64_uri, to_png, to_png_with, to_svg, to_svg_with, ErrorCorrection, ImageOptions,
+    };
 
     /// Width and height from the PNG header, which starts at byte 16.
     fn dimensions(png: &[u8]) -> (u32, u32) {
@@ -83,5 +85,94 @@ mod images {
             assert!(to_png(qr, 256).is_ok());
             assert!(to_svg(qr).is_ok());
         }
+    }
+    #[test]
+    fn the_default_options_match_the_simple_call() {
+        let plain = to_png(common::INDIVIDUAL_KHR_500, 320).expect("renders");
+        let same = to_png_with(
+            common::INDIVIDUAL_KHR_500,
+            &ImageOptions {
+                size: 320,
+                ..ImageOptions::default()
+            },
+        )
+        .expect("renders");
+
+        assert_eq!(plain, same);
+    }
+
+    #[test]
+    fn higher_error_correction_makes_a_denser_code() {
+        let sizes: Vec<u32> = [
+            ErrorCorrection::Low,
+            ErrorCorrection::Medium,
+            ErrorCorrection::Quartile,
+            ErrorCorrection::High,
+        ]
+        .into_iter()
+        .map(|error_correction| {
+            let png = to_png_with(
+                common::INDIVIDUAL_KHR_500,
+                &ImageOptions {
+                    size: 1,
+                    quiet_zone: 0,
+                    error_correction,
+                },
+            )
+            .expect("renders");
+
+            dimensions(&png).0
+        })
+        .collect();
+
+        // One pixel per module, so the width is the module count.
+        assert!(
+            sizes.windows(2).all(|pair| pair[0] <= pair[1]),
+            "expected non decreasing module counts, got {sizes:?}"
+        );
+        assert!(
+            sizes[3] > sizes[0],
+            "High must carry more modules than Low, got {sizes:?}"
+        );
+    }
+
+    #[test]
+    fn the_quiet_zone_can_be_removed() {
+        let options = |quiet_zone| ImageOptions {
+            size: 1,
+            quiet_zone,
+            ..ImageOptions::default()
+        };
+
+        let bare = to_png_with(common::INDIVIDUAL_KHR_500, &options(0)).expect("renders");
+        let padded = to_png_with(common::INDIVIDUAL_KHR_500, &options(4)).expect("renders");
+
+        assert_eq!(dimensions(&padded).0, dimensions(&bare).0 + 8);
+    }
+
+    #[test]
+    fn an_overlay_preset_uses_high_correction() {
+        assert_eq!(
+            ImageOptions::with_overlay().error_correction,
+            ErrorCorrection::High
+        );
+
+        let svg = to_svg_with(common::INDIVIDUAL_KHR_500, &ImageOptions::with_overlay())
+            .expect("renders");
+        assert!(svg.contains("<svg"));
+    }
+
+    #[test]
+    fn an_enormous_quiet_zone_is_refused() {
+        let result = to_png_with(
+            common::INDIVIDUAL_KHR_500,
+            &ImageOptions {
+                size: 4096,
+                quiet_zone: 4096,
+                ..ImageOptions::default()
+            },
+        );
+
+        assert!(result.is_err());
     }
 }

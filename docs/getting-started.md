@@ -43,6 +43,9 @@ khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh" \
     --amount 5000 --expires-in 300 --png qr.png
 ```
 
+Add `--ecc high` if you plan to draw a logo over the middle, and
+`--quiet-zone 0` if your own layout supplies the padding.
+
 It prints the payload, then the MD5 handle, then any files it wrote:
 
 ```

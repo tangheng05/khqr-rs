@@ -1,8 +1,29 @@
 use clap::{Args as ClapArgs, ValueEnum};
-use khqr_core::{md5, to_png, to_svg, Currency, Khqr, KhqrBuilder};
+use khqr_core::{
+    md5, to_png_with, to_svg_with, Currency, ErrorCorrection, ImageOptions, Khqr, KhqrBuilder,
+};
 use std::error::Error;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
+pub enum EccArg {
+    Low,
+    Medium,
+    Quartile,
+    High,
+}
+
+impl From<EccArg> for ErrorCorrection {
+    fn from(level: EccArg) -> Self {
+        match level {
+            EccArg::Low => Self::Low,
+            EccArg::Medium => Self::Medium,
+            EccArg::Quartile => Self::Quartile,
+            EccArg::High => Self::High,
+        }
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
 pub enum CurrencyArg {
@@ -65,6 +86,13 @@ pub struct Args {
     /// Width of the PNG in pixels.
     #[arg(long, default_value_t = 512)]
     size: u32,
+    /// How much of the code can be covered and still read. Use high if you
+    /// intend to draw a logo over the middle.
+    #[arg(long, value_enum, default_value_t = EccArg::Medium)]
+    ecc: EccArg,
+    /// Blank modules around the code. Set 0 when your own layout pads it.
+    #[arg(long, default_value_t = 4)]
+    quiet_zone: u32,
 }
 
 pub fn run(args: &Args) -> Result<(), Box<dyn Error>> {
@@ -99,12 +127,18 @@ pub fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     println!("{qr}");
     println!("md5 {}", md5(&qr));
 
+    let options = ImageOptions {
+        size: args.size,
+        error_correction: args.ecc.into(),
+        quiet_zone: args.quiet_zone,
+    };
+
     if let Some(path) = &args.png {
-        std::fs::write(path, to_png(&qr, args.size)?)?;
+        std::fs::write(path, to_png_with(&qr, &options)?)?;
         println!("png {}", path.display());
     }
     if let Some(path) = &args.svg {
-        std::fs::write(path, to_svg(&qr)?)?;
+        std::fs::write(path, to_svg_with(&qr, &options)?)?;
         println!("svg {}", path.display());
     }
 

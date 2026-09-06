@@ -3,10 +3,16 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
-## Unreleased
+## 0.1.5
 
 ### Added
 
+- `to_png_with`, `to_svg_with` and `to_base64_uri_with` take an `ImageOptions`
+  carrying the error correction level and the quiet zone, with
+  `ImageOptions::with_overlay()` for a code you will draw a logo over. The
+  default `Medium` level tolerates about 15% coverage, and a typical centred
+  roundel covers closer to 18%, so overlaying one on the old output produced
+  codes that scanned unreliably. `khqr gen` gains `--ecc` and `--quiet-zone`.
 - `khqr-wasm` has an `image` feature, on by default. Turning it off drops the
   PNG and SVG renderers and takes the bundle from 260KB to 113KB, which suits a
   page that already draws QR codes in JavaScript.

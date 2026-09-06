@@ -24,6 +24,9 @@ pub use decoder::{decode, DecodedKhqr};
 pub use error::KhqrError;
 pub use hash::md5;
 #[cfg(feature = "image")]
-pub use qr::{to_base64_uri, to_png, to_svg};
+pub use qr::{
+    to_base64_uri, to_base64_uri_with, to_png, to_png_with, to_svg, to_svg_with, ErrorCorrection,
+    ImageOptions,
+};
 pub use tlv::{format_tlv, parse_tlv, Tlv};
 pub use types::{Currency, MerchantType};
