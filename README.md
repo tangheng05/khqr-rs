@@ -8,14 +8,9 @@
 
 A Rust implementation of KHQR, the payment QR standard used by Bakong in Cambodia.
 
-KHQR is EMVCo merchant-presented QR: a flat ASCII string of nested tag-length-value
-triples ending in a CRC-16 checksum. Generating one is pure string work, so there is
-no good reason for a library that does it to require an async runtime.
-
-That is the point of this crate. The codec lives in `khqr-core` with no heavy
-dependencies, which keeps it usable from a sync CLI, a WASM bundle in the browser, or
-a POS terminal. Network calls to the Bakong Open API are a separate crate you only pull
-in if you need them.
+The codec lives in `khqr-core`. It has no async runtime and no HTTP, so it runs in a
+CLI, in a browser through WASM, or on a POS terminal. Add `khqr-api` when you need to
+check whether a payment arrived.
 
 ## Documentation
 
