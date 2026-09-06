@@ -11,6 +11,13 @@ dependencies, which keeps it usable from a sync CLI, a WASM bundle in the browse
 a POS terminal. Network calls to the Bakong Open API are a separate crate you only pull
 in if you need them.
 
+## Documentation
+
+[Getting started](docs/getting-started.md) covers Rust, the CLI, the browser
+and the mobile bindings. Beyond that: [generating](docs/generating.md),
+[decoding](docs/decoding.md), [checking payments](docs/payments.md), and
+[the format itself](docs/format.md) if you need to read a payload by hand.
+
 ## Status
 
 Early. The workspace, the reference test vectors and CI are in place; the codec itself
