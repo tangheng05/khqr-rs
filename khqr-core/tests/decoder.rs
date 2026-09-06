@@ -240,3 +240,58 @@ fn a_timestamp_must_be_digits() {
     ));
     assert!(decode(&signed).is_err());
 }
+
+/// A second sub-tag 00 inside tag 29. We report the first, a reader that
+/// assigns into a map reports the last, and the checksum satisfies both.
+const DUPLICATE_ACCOUNT_SUBTAG: &str = "00020101021229350014jonhsmith@nbcq0013attacker@aclb52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH6304A0C8";
+
+/// A whole second tag 63 injected mid payload, each checksum valid on its own.
+const TWO_CHECKSUMS: &str = "00020101021229180014jonhsmith@nbcq52045999530311654041.005802KH5910Jonh Smith6010PHNOM PENH6304CA0662160512SMUGGLED-REF1501X6304A4FD";
+
+#[test]
+fn a_repeated_sub_tag_is_refused() {
+    assert!(
+        verify_crc(DUPLICATE_ACCOUNT_SUBTAG),
+        "this test is pointless unless the checksum is valid"
+    );
+
+    match decode(DUPLICATE_ACCOUNT_SUBTAG) {
+        Err(KhqrError::DuplicateTag { .. }) => {}
+        other => panic!("a repeated sub-tag must be refused, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_second_checksum_field_is_refused() {
+    assert!(verify_crc(TWO_CHECKSUMS));
+
+    match decode(TWO_CHECKSUMS) {
+        Err(KhqrError::DuplicateTag { .. }) => {}
+        other => panic!("two checksum fields must be refused, got {other:?}"),
+    }
+}
+
+#[test]
+fn utf16_lengths_leave_no_room_for_a_second_reading() {
+    // Eight UTF-16 units of emoji. Counting scalars would consume four
+    // characters too many and swallow the tag that follows.
+    let payload = append_crc(concat!(
+        "000201",
+        "010212",
+        "29130009shop@aclb",
+        "52045999",
+        "5303840",
+        "54041.00",
+        "1508\u{1F600}\u{1F600}\u{1F600}\u{1F600}",
+        "54042000",
+        "5802KH",
+        "5904Shop",
+        "6010Phnom Penh",
+    ));
+
+    // Two tag 54 fields, so this must be refused rather than read either way.
+    assert!(matches!(
+        decode(&payload),
+        Err(KhqrError::DuplicateTag { .. })
+    ));
+}

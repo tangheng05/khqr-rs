@@ -7,7 +7,50 @@ Pin `"=0.1.5"` if you would rather review each change.
 
 ## Unreleased
 
+### Added
+
+- `DecodedKhqr::amount()` returns the amount as a number, or `None` when it is
+  not a finite non negative one. `"NaN"` parses, and every comparison against it
+  is false, so the raw string was a trap for a guard like `amount < expected`.
+
+### Changed
+
+- `khqr-ffi` no longer pulls the binding generator into every consumer. The
+  `cli` feature carries it and the `uniffi-bindgen` binary requires it, so a
+  mobile app linking the library compiles 69 crates rather than 112, without a
+  template engine, an executable parser or an argument parser.
+
 ### Fixed
+
+- Lengths count UTF-16 code units, as `String.length` does in the JavaScript and
+  Dart SDKs. Counting Unicode scalars agreed on Khmer and disagreed on anything
+  astral, so a payload holding an emoji parsed one way here and another way
+  everywhere else, both readings carrying the same valid checksum. An attacker
+  choosing the emoji chose which amount or account each reader saw.
+- A repeated sub-tag inside a template is refused. The duplicate-tag defence in
+  0.1.1 covered only top-level tags, so a second account ID inside tag `29` was
+  accepted: this crate reported the first, a reader that assigns into a map
+  reported the last, and the checksum satisfied both.
+- A second tag `63` is refused, as is a checksum field that is not four
+  characters. Either let one payload carry two valid checksums.
+- Amounts round on the value the double actually holds. Scaling by a power of
+  ten first turned near ties into exact ties, so `2.675` was written as `2.68`
+  where the reference SDK writes `2.67`. It affected about 4% of two-decimal
+  amounts and always rounded up.
+- An amount that rounds to nothing is refused rather than making a dynamic QR
+  nobody can pay.
+- Control characters are refused in the account, merchant ID, acquiring bank and
+  UnionPay fields, which had only a length check.
+- `decode` refuses a payload larger than any QR symbol can hold. Reading
+  allocates several times the input, so a 40MB string cost over a gigabyte.
+- Batch answers are matched by the identifier each item echoes back, not only by
+  count. A reordered answer used to attribute a payment to the wrong order.
+- `khqr decode` replaces control characters before printing. A merchant name
+  carrying an escape sequence could rewrite lines already on screen, including
+  the amount.
+- A renewal refused with a non JSON body is `Unauthorized` rather than a
+  transport error.
+- `to_png` accepts the documented maximum of 4096.
 
 - The browser sample followed a build that leaves the renderers out, then
   imported `toDataUri`. A named import of a missing export is a link error, so

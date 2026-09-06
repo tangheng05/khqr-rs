@@ -23,6 +23,12 @@ pub enum ApiError {
         /// The HTTP status code.
         status: u16,
     },
+    /// A batch answered about a transaction other than the one asked at that
+    /// position, so the results cannot be trusted to line up.
+    BatchOutOfOrder {
+        /// Where the answers stopped matching the request.
+        position: usize,
+    },
     /// A batch answered with a different number of results than were asked for.
     BatchMismatch {
         /// How many were asked about.
@@ -62,6 +68,10 @@ impl fmt::Display for ApiError {
                 ),
                 other => write!(f, "bakong returned http {other}"),
             },
+            Self::BatchOutOfOrder { position } => write!(
+                f,
+                "the batch answer at position {position} is about a different transaction"
+            ),
             Self::BatchMismatch {
                 requested,
                 returned,

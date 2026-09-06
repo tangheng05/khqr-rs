@@ -5,6 +5,11 @@ use alloc::vec::Vec;
 
 const ADDITIONAL_TAGS: [&str; 6] = ["01", "02", "03", "05", "07", "08"];
 
+/// A QR symbol tops out near three thousand bytes. Reading is linear but
+/// allocates several times the input, so refuse anything that cannot be a QR.
+const MAX_PAYLOAD: usize = 8192;
+const CRC_LENGTH: usize = 4;
+
 /// Every field of a KHQR payload, with the nested templates flattened.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DecodedKhqr {
@@ -54,6 +59,19 @@ impl DecodedKhqr {
     pub fn is_dynamic(&self) -> bool {
         self.transaction_amount.is_some()
     }
+
+    /// The amount as a number, if it is one.
+    ///
+    /// `transaction_amount` is kept as written so a payload round trips, but
+    /// what is written is whatever the issuer put there. `"NaN"` parses, and
+    /// every comparison against it is false, so a guard like
+    /// `amount < expected` would pass. This returns `None` for anything that
+    /// is not a finite, non negative number.
+    pub fn amount(&self) -> Option<f64> {
+        let amount: f64 = self.transaction_amount.as_deref()?.parse().ok()?;
+
+        (amount.is_finite() && !amount.is_sign_negative()).then_some(amount)
+    }
 }
 
 /// Reads a complete payload, checksum and all.
@@ -61,10 +79,19 @@ impl DecodedKhqr {
 /// Unknown tags are kept rather than rejected, since production QRs carry
 /// vendor extensions. A checksum that does not match is always an error.
 pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
+    if qr.len() > MAX_PAYLOAD {
+        return Err(KhqrError::PayloadTooLong {
+            bytes: qr.len(),
+            max: MAX_PAYLOAD,
+        });
+    }
+
     let fields = parse_tlv(qr)?;
 
     let crc = match fields.last() {
-        Some(field) if field.tag == "63" => field.value.clone(),
+        Some(field) if field.tag == "63" && field.value.chars().count() == CRC_LENGTH => {
+            field.value.clone()
+        }
         _ => return Err(missing("checksum")),
     };
 
@@ -91,6 +118,7 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
     let mut language = None;
     let mut timestamps = None;
     let mut unknown = Vec::new();
+    let mut checksum_seen = false;
 
     for field in fields {
         let tag = field.tag.clone();
@@ -116,7 +144,11 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
             "62" => additional.replace(parse_tlv(&field.value)?).is_some(),
             "64" => language.replace(parse_tlv(&field.value)?).is_some(),
             "99" => timestamps.replace(parse_tlv(&field.value)?).is_some(),
-            "63" => false,
+            "63" => {
+                let repeated = checksum_seen;
+                checksum_seen = true;
+                repeated
+            }
             _ => {
                 unknown.push(field);
                 false
@@ -133,6 +165,10 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
     let timestamps = timestamps.unwrap_or_default();
 
     let (merchant_type, account_fields) = account.ok_or_else(|| missing("account template"))?;
+
+    for template in [&account_fields, &additional, &language, &timestamps] {
+        only_once(template)?;
+    }
     let account_detail = value_of(&account_fields, "01");
     let (account_information, merchant_id) = match merchant_type {
         MerchantType::Individual => (account_detail, None),
@@ -184,6 +220,20 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
 
 fn missing(field: &'static str) -> KhqrError {
     KhqrError::MissingField { field }
+}
+
+/// A repeated sub-tag is as ambiguous as a repeated top-level one, and just as
+/// easy to append to a payload whose checksum is then recomputed.
+fn only_once(fields: &[Tlv]) -> Result<(), KhqrError> {
+    for (index, field) in fields.iter().enumerate() {
+        if fields[..index].iter().any(|seen| seen.tag == field.tag) {
+            return Err(KhqrError::DuplicateTag {
+                tag: field.tag.clone(),
+            });
+        }
+    }
+
+    Ok(())
 }
 
 fn value_of(fields: &[Tlv], tag: &str) -> Option<String> {

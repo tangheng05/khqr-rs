@@ -1,6 +1,7 @@
 use crate::{append_crc, format_tlv, Currency, KhqrError, MerchantType};
 use alloc::format;
 use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
 const MAX_NAME: usize = 25;
 const MAX_CITY: usize = 15;
@@ -351,12 +352,15 @@ impl KhqrBuilder {
 
         if let Some(detail) = &self.account_detail {
             capped(detail, "account information", MAX_ACCOUNT)?;
+            printable(detail, "account information")?;
         }
         if let Some(bank) = &self.acquiring_bank {
             capped(bank, "acquiring bank", MAX_ACCOUNT)?;
+            printable(bank, "acquiring bank")?;
         }
         if let Some(union_pay) = &self.union_pay_merchant {
             capped(union_pay, "unionpay merchant", MAX_UNION_PAY)?;
+            printable(union_pay, "unionpay merchant")?;
         }
         for (_, field, value) in self.additional.fields() {
             if let Some(value) = value {
@@ -449,7 +453,7 @@ fn required(value: Option<String>, field: &'static str) -> Result<String, KhqrEr
 }
 
 fn capped(value: &str, field: &'static str, max: usize) -> Result<(), KhqrError> {
-    let chars = value.chars().count();
+    let chars = value.encode_utf16().count();
 
     if chars > max {
         return Err(KhqrError::FieldTooLong { field, chars, max });
@@ -492,36 +496,69 @@ fn format_amount(amount: f64, currency: Currency) -> Result<String, KhqrError> {
         return Err(invalid("amount", &amount.to_string()));
     }
 
-    let decimals = currency.decimals();
-    let divisor = 10u64.pow(decimals as u32);
-    let scaled = amount * divisor as f64;
-
-    if scaled >= MAX_SCALED_AMOUNT {
+    if amount >= MAX_SCALED_AMOUNT {
         return Err(invalid("amount", &amount.to_string()));
     }
 
-    // Truncate, then carry when the remainder reaches a half. `f64::round`
-    // would do this in one step but is not available without std.
-    let whole = scaled as u64;
-    let units = if scaled - whole as f64 >= 0.5 {
-        whole + 1
-    } else {
-        whole
-    };
-    let text = if decimals == 0 {
-        units.to_string()
-    } else {
-        format!(
-            "{}.{:0>width$}",
-            units / divisor,
-            units % divisor,
-            width = decimals
-        )
-    };
+    let text = round_like_to_fixed(amount, currency.decimals());
+
+    // A dynamic QR nobody can pay is worse than a static one.
+    if text.bytes().all(|byte| byte == b'0' || byte == b'.') {
+        return Err(invalid("amount", &amount.to_string()));
+    }
 
     capped(&text, "amount", MAX_AMOUNT)?;
 
     Ok(text)
+}
+
+/// Rounds on the decimal value the double actually holds, ties away from zero.
+///
+/// Scaling by a power of ten first rounds twice, and the answers differ
+/// wherever the product lands on a tie the exact value never reached. `2.675`
+/// is held as `2.67499...`, so this writes `2.67` like the reference SDK
+/// rather than `2.68`.
+fn round_like_to_fixed(amount: f64, decimals: usize) -> String {
+    // Far enough past the rounding position to see the exact value there.
+    let exact = format!("{amount:.*}", decimals + 25);
+    let (whole, fraction) = match exact.split_once('.') {
+        Some(parts) => parts,
+        None => (exact.as_str(), ""),
+    };
+
+    let mut digits: Vec<u8> = whole
+        .bytes()
+        .chain(fraction.bytes().take(decimals))
+        .collect();
+
+    if fraction.as_bytes().get(decimals).copied().unwrap_or(b'0') >= b'5' {
+        carry(&mut digits);
+    }
+
+    let point = digits.len() - decimals;
+    let mut text = String::with_capacity(digits.len() + 1);
+
+    for (index, digit) in digits.iter().enumerate() {
+        if index == point && decimals > 0 {
+            text.push('.');
+        }
+        text.push(char::from(*digit));
+    }
+
+    text
+}
+
+fn carry(digits: &mut Vec<u8>) {
+    for index in (0..digits.len()).rev() {
+        if digits[index] == b'9' {
+            digits[index] = b'0';
+        } else {
+            digits[index] += 1;
+            return;
+        }
+    }
+
+    digits.insert(0, b'1');
 }
 
 #[cfg(test)]

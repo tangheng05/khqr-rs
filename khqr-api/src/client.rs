@@ -250,6 +250,21 @@ impl BakongClient {
             });
         }
 
+        // A reordered answer would attribute a payment to the wrong order, so
+        // check the identifier each item echoes back rather than only the count.
+        for (position, item) in returned.iter().enumerate() {
+            let echoed = item
+                .get("md5")
+                .or_else(|| item.get("hash"))
+                .and_then(Value::as_str);
+
+            if let Some(echoed) = echoed {
+                if !items[position].eq_ignore_ascii_case(echoed) {
+                    return Err(ApiError::BatchOutOfOrder { position });
+                }
+            }
+        }
+
         returned.iter().map(status_of).collect()
     }
 

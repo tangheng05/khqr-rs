@@ -15,8 +15,12 @@ pub struct Tlv {
     pub value: String,
 }
 
-/// Writes one triple: the tag, the value's character count as two digits, then
-/// the value.
+/// Writes one triple: the tag, the value's length as two digits, then the value.
+///
+/// Length counts UTF-16 code units, which is what `String.length` gives the
+/// JavaScript and Dart SDKs. Khmer counts the same either way; an emoji does
+/// not, and a payload the two disagree about is a payload that pays two
+/// different people.
 ///
 /// ```
 /// assert_eq!(khqr_core::format_tlv("59", "Jonh Smith")?, "5910Jonh Smith");
@@ -29,7 +33,7 @@ pub fn format_tlv(tag: &str, value: &str) -> Result<String, KhqrError> {
         });
     }
 
-    let length = value.chars().count();
+    let length = value.encode_utf16().count();
     if length > 99 {
         return Err(KhqrError::ValueTooLong {
             tag: tag.to_string(),
@@ -57,9 +61,9 @@ pub fn parse_tlv(input: &str) -> Result<Vec<Tlv>, KhqrError> {
 
     while !rest.is_empty() {
         let (header, after_header) =
-            split_chars(rest, 4).ok_or(KhqrError::UnexpectedEnd { offset })?;
+            split_utf16(rest, 4).ok_or(KhqrError::UnexpectedEnd { offset })?;
         let (tag, length_field) =
-            split_chars(header, 2).ok_or(KhqrError::UnexpectedEnd { offset })?;
+            split_utf16(header, 2).ok_or(KhqrError::UnexpectedEnd { offset })?;
 
         if !is_tag(tag) {
             return Err(KhqrError::InvalidTag {
@@ -74,11 +78,11 @@ pub fn parse_tlv(input: &str) -> Result<Vec<Tlv>, KhqrError> {
             });
         };
 
-        let Some((value, remainder)) = split_chars(after_header, declared) else {
+        let Some((value, remainder)) = split_utf16(after_header, declared) else {
             return Err(KhqrError::Truncated {
                 tag: tag.to_string(),
                 declared,
-                available: after_header.chars().count(),
+                available: after_header.encode_utf16().count(),
             });
         };
 
@@ -94,18 +98,27 @@ pub fn parse_tlv(input: &str) -> Result<Vec<Tlv>, KhqrError> {
     Ok(fields)
 }
 
-/// Splits after `count` characters. `None` if there are not that many, which
-/// keeps the byte offsets on character boundaries so slicing cannot panic.
-fn split_chars(input: &str, count: usize) -> Option<(&str, &str)> {
-    let mut characters = input.char_indices();
+/// Splits after `count` UTF-16 code units.
+///
+/// `None` if the input is shorter, or if the split would land inside a
+/// surrogate pair, which is a boundary Rust cannot represent and a payload no
+/// reader should accept.
+fn split_utf16(input: &str, count: usize) -> Option<(&str, &str)> {
+    let mut units = 0;
 
-    for _ in 0..count {
-        characters.next()?;
+    for (index, character) in input.char_indices() {
+        if units == count {
+            return Some(input.split_at(index));
+        }
+
+        units += character.len_utf16();
+
+        if units > count {
+            return None;
+        }
     }
 
-    let at = characters.next().map_or(input.len(), |(index, _)| index);
-
-    Some(input.split_at(at))
+    (units == count).then(|| input.split_at(input.len()))
 }
 
 fn is_tag(tag: &str) -> bool {

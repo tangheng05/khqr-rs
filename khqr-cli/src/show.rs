@@ -67,10 +67,20 @@ pub fn decode(qr: &str) -> Result<(), Box<dyn Error>> {
 
     let width = rows.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
     for (label, value) in rows {
-        println!("{label:width$}  {value}");
+        println!("{label:width$}  {}", readable(&value));
     }
 
     Ok(())
+}
+
+/// A decoded payload can carry control characters, and a terminal would act on
+/// them: an escape sequence in a merchant name can rewrite the lines above it,
+/// including the amount.
+fn readable(value: &str) -> String {
+    value
+        .chars()
+        .map(|c| if c.is_control() { '\u{fffd}' } else { c })
+        .collect()
 }
 
 pub fn verify(qr: &str) -> Result<(), Box<dyn Error>> {

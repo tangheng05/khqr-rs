@@ -273,7 +273,6 @@ fn ties_round_away_from_zero_like_the_reference_sdk() {
         (Currency::Usd, 0.1, "0.10"),
         (Currency::Usd, 1.5, "1.50"),
         (Currency::Usd, 1234.5, "1234.50"),
-        (Currency::Usd, 0.0, "0.00"),
     ];
 
     for (currency, amount, written) in cases {
@@ -328,4 +327,81 @@ fn a_language_preference_must_be_two_letters() {
         .build();
 
     assert!(result.is_err());
+}
+
+#[test]
+fn rounding_matches_the_reference_sdk_on_near_ties() {
+    // Each of these is held as slightly below the half, so toFixed rounds
+    // down. Scaling by 100 first turns them into exact ties and rounds up.
+    let cases = [
+        (0.015, "0.01"),
+        (0.045, "0.04"),
+        (0.615, "0.61"),
+        (1.115, "1.11"),
+        (2.675, "2.67"),
+        (8.885, "8.88"),
+        // Exactly representable, so a genuine tie: away from zero.
+        (0.125, "0.13"),
+        (1.5, "1.50"),
+    ];
+
+    for (amount, written) in cases {
+        let qr = Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .currency(Currency::Usd)
+            .amount(amount)
+            .build()
+            .expect("fields are valid")
+            .to_qr_string()
+            .expect("payload must serialise");
+
+        let expected = format!("54{:02}{written}", written.len());
+        assert!(qr.contains(&expected), "{amount} should write {written}");
+    }
+}
+
+#[test]
+fn an_amount_that_rounds_to_nothing_is_refused() {
+    for amount in [0.0, 0.001, 0.004] {
+        let result = Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .currency(Currency::Usd)
+            .amount(amount)
+            .build();
+
+        assert!(result.is_err(), "{amount} would write a QR nobody can pay");
+    }
+}
+
+#[test]
+fn control_characters_are_refused_in_the_routing_fields() {
+    let base = || {
+        Khqr::merchant("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+    };
+
+    assert!(base().merchant_id("MID\n99").build().is_err());
+    assert!(base().account_information("AC\nCT").build().is_err());
+    assert!(base().acquiring_bank("AB\u{0}C").build().is_err());
+    assert!(base().union_pay_merchant("UP\nI").build().is_err());
+    assert!(base().merchant_id("").build().is_err());
+}
+
+#[test]
+fn lengths_count_utf16_units_like_the_javascript_sdk() {
+    // One emoji is two UTF-16 code units, which is what String.length reports
+    // and therefore what every other KHQR SDK writes into the length field.
+    let qr = Khqr::individual("shop@aclb")
+        .merchant_name("\u{1F600} Shop")
+        .merchant_city("Phnom Penh")
+        .build()
+        .expect("fields are valid")
+        .to_qr_string()
+        .expect("payload must serialise");
+
+    assert!(qr.contains("5907\u{1F600} Shop"), "{qr}");
+    assert!(verify_crc(&qr));
 }

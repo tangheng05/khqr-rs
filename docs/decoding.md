@@ -40,7 +40,8 @@ for field in decoded.unknown.iter().chain(&decoded.additional_unknown) {
 ```
 
 `unknown` holds top level tags, `additional_unknown` holds sub tags found
-inside tag `62`.
+inside tag `62`. Sub tags of the account template and of tags `64` and `99` are
+not kept, so do not rely on this to audit a payload byte for byte.
 
 ## Amounts stay as strings
 
@@ -52,15 +53,19 @@ writing it back would silently rewrite what the bank actually sent. Keeping
 the original string means a decode then encode round trip reproduces the input
 byte for byte.
 
-Parse it yourself when you need arithmetic:
+Use `amount()` when you need arithmetic:
 
 ```rust
-let amount: f64 = decoded
-    .transaction_amount
-    .as_deref()
-    .unwrap_or("0")
-    .parse()?;
+match decoded.amount() {
+    Some(amount) => charge(amount),
+    None => reject("no amount, or one that is not a number"),
+}
 ```
+
+It returns `None` for anything that is not a finite, non negative number.
+Parsing the raw string yourself is a trap: `"NaN"` parses successfully, and
+every comparison against it is false, so a guard like `amount < expected`
+would pass.
 
 `decoded.currency()` gives you a typed `Currency` when tag `53` held a code
 this library knows, and `None` otherwise.

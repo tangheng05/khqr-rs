@@ -45,6 +45,13 @@ pub enum KhqrError {
         /// What went wrong.
         reason: String,
     },
+    /// The payload was longer than any QR symbol can hold.
+    PayloadTooLong {
+        /// Length in bytes.
+        bytes: usize,
+        /// The most this crate will read.
+        max: usize,
+    },
     /// A tag appeared more than once. EMVCo allows each at most once, and
     /// accepting a repeat lets someone append a field and recompute the checksum.
     DuplicateTag {
@@ -117,6 +124,12 @@ impl fmt::Display for KhqrError {
             }
             Self::Render { reason } => {
                 write!(f, "could not render the qr image: {reason}")
+            }
+            Self::PayloadTooLong { bytes, max } => {
+                write!(
+                    f,
+                    "payload is {bytes} bytes, more than the {max} a qr can hold"
+                )
             }
             Self::DuplicateTag { tag } => {
                 write!(f, "tag {tag} appears more than once")

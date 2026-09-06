@@ -81,9 +81,9 @@ async fn a_batch_keeps_the_per_item_status() {
         json!({
             "responseCode": 0,
             "data": [
-                { "status": "SUCCESS", "hash": "aaa", "amount": 1.5, "currency": "KHR" },
-                { "status": "NOT_FOUND" },
-                { "status": "STATIC_QR" }
+                { "md5": "a", "status": "SUCCESS", "hash": "aaa", "amount": 1.5, "currency": "KHR" },
+                { "md5": "b", "status": "NOT_FOUND" },
+                { "md5": "c", "status": "STATIC_QR" }
             ]
         }),
     )
@@ -464,4 +464,30 @@ async fn an_unrecognised_batch_status_is_refused() {
     let md5s = vec!["a".to_string()];
 
     assert!(client.check_transaction_by_md5_list(&md5s).await.is_err());
+}
+
+#[tokio::test]
+async fn a_reordered_batch_answer_is_refused() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/check_transaction_by_md5_list",
+        json!({
+            "responseCode": 0,
+            "data": [
+                { "md5": "second", "status": "SUCCESS", "hash": "aaa" },
+                { "md5": "first", "status": "NOT_FOUND" }
+            ]
+        }),
+    )
+    .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+    let md5s = vec!["first".to_string(), "second".to_string()];
+
+    // Lining these up by position would mark the wrong order paid.
+    assert!(matches!(
+        client.check_transaction_by_md5_list(&md5s).await,
+        Err(ApiError::BatchOutOfOrder { position: 0 })
+    ));
 }

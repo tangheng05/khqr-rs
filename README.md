@@ -201,8 +201,8 @@ wasm-pack build khqr-wasm --target web -- --no-default-features
 an Android app, an iOS app and a Python service.
 
 ```sh
-cargo build -p khqr-ffi --release
-cargo run -p khqr-ffi --bin uniffi-bindgen -- generate \
+cargo build -p khqr-ffi --release --features cli
+cargo run -p khqr-ffi --features cli --bin uniffi-bindgen -- generate \
     --library target/release/libkhqr_ffi.so \
     --language kotlin --language swift --language python \
     --out-dir bindings

@@ -25,8 +25,10 @@ jobs:
       - run: cargo test -p khqr-core --no-default-features
       - run: cargo check -p khqr-api --no-default-features --features native-tls
       - run: |
-          cargo build -p khqr-ffi
-          cargo run -p khqr-ffi --bin uniffi-bindgen -- generate             --library target/debug/libkhqr_ffi.so --no-format --out-dir target/bindings             --language kotlin --language swift --language python
+          cargo build -p khqr-ffi --features cli
+          cargo run -p khqr-ffi --features cli --bin uniffi-bindgen -- generate \
+            --library target/debug/libkhqr_ffi.so --no-format --out-dir target/bindings \
+            --language kotlin --language swift --language python
       - run: rustup target add wasm32-unknown-unknown thumbv7em-none-eabihf
       - run: cargo clippy -p khqr-wasm --target wasm32-unknown-unknown -- -D warnings
       - run: cargo build -p khqr-core --no-default-features --target thumbv7em-none-eabihf
