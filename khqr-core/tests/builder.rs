@@ -2,7 +2,7 @@
 
 mod common;
 
-use khqr_core::{verify_crc, Currency, Khqr, KhqrError, MerchantType};
+use khqr_core::{verify_crc, Currency, Khqr, KhqrBuilder, KhqrError, MerchantType};
 
 const CREATED_AT: u64 = 1_739_495_778_722;
 
@@ -183,4 +183,67 @@ fn a_negative_amount_is_rejected() {
         .build();
 
     assert!(result.is_err());
+}
+
+#[test]
+fn a_unionpay_merchant_account_is_written_to_tag_15() {
+    let qr = Khqr::merchant("shop@aclb")
+        .union_pay_merchant("UPI-123456")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .build()
+        .expect("fields are valid")
+        .to_qr_string()
+        .expect("payload must serialise");
+
+    assert!(qr.contains("1510UPI-123456"));
+    assert!(qr.starts_with("0002010102111510UPI-123456"));
+    assert!(verify_crc(&qr));
+}
+
+#[test]
+fn the_specification_field_limits_are_enforced() {
+    let base = || {
+        Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+    };
+
+    let cases: Vec<(&str, KhqrBuilder)> = vec![
+        (
+            "account id",
+            Khqr::individual(format!("{}@aclb", "a".repeat(28)))
+                .merchant_name("Shop")
+                .merchant_city("Phnom Penh"),
+        ),
+        (
+            "account information",
+            base().account_information("a".repeat(33)),
+        ),
+        ("acquiring bank", base().acquiring_bank("a".repeat(33))),
+        ("bill number", base().bill_number("a".repeat(26))),
+        ("mobile number", base().mobile_number("a".repeat(26))),
+        ("store label", base().store_label("a".repeat(26))),
+        ("reference label", base().reference_label("a".repeat(26))),
+        ("terminal label", base().terminal_label("a".repeat(26))),
+        (
+            "purpose of transaction",
+            base().purpose_of_transaction("a".repeat(26)),
+        ),
+        (
+            "unionpay merchant",
+            base().union_pay_merchant("a".repeat(100)),
+        ),
+    ];
+
+    for (field, builder) in cases {
+        match builder.build() {
+            Err(KhqrError::FieldTooLong {
+                field: reported, ..
+            }) => {
+                assert_eq!(reported, field);
+            }
+            other => panic!("{field} should have been rejected, got {other:?}"),
+        }
+    }
 }

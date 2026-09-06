@@ -12,6 +12,7 @@ pub struct DecodedKhqr {
     pub account_information: Option<String>,
     pub merchant_id: Option<String>,
     pub acquiring_bank: Option<String>,
+    pub union_pay_merchant: Option<String>,
     pub merchant_category_code: String,
     pub transaction_currency: String,
     pub transaction_amount: Option<String>,
@@ -74,6 +75,7 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
     let mut payload_format_indicator = None;
     let mut point_of_initiation_method = None;
     let mut account = None;
+    let mut union_pay_merchant = None;
     let mut merchant_category_code = None;
     let mut transaction_currency = None;
     let mut transaction_amount = None;
@@ -89,6 +91,7 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
         match field.tag.as_str() {
             "00" => payload_format_indicator = Some(field.value),
             "01" => point_of_initiation_method = Some(field.value),
+            "15" => union_pay_merchant = Some(field.value),
             "29" => account = Some((MerchantType::Individual, parse_tlv(&field.value)?)),
             "30" => account = Some((MerchantType::Merchant, parse_tlv(&field.value)?)),
             "52" => merchant_category_code = Some(field.value),
@@ -129,6 +132,7 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
         account_information,
         merchant_id,
         acquiring_bank: value_of(&account_fields, "02"),
+        union_pay_merchant,
         merchant_category_code: merchant_category_code
             .ok_or_else(|| missing("merchant category code"))?,
         transaction_currency: transaction_currency

@@ -84,40 +84,69 @@ impl BakongClient {
 
     /// Asks about one payment by its MD5 handle.
     pub async fn check_transaction_by_md5(&self, md5: &str) -> Result<TxStatus, ApiError> {
-        let envelope: Envelope<Transaction> = self
-            .post("/v1/check_transaction_by_md5", json!({ "md5": md5 }))
-            .await?;
-
-        Ok(match envelope.data {
-            Some(transaction) if envelope.response_code == 0 => {
-                TxStatus::Paid(Box::new(transaction))
-            }
-            _ => TxStatus::NotFound,
-        })
+        self.single("/v1/check_transaction_by_md5", json!({ "md5": md5 }))
+            .await
     }
 
-    /// Asks about up to 50 payments at once, in the order given.
+    /// Asks about up to 50 payments by MD5 handle, answered in the order given.
     pub async fn check_transaction_by_md5_list(
         &self,
         md5s: &[String],
     ) -> Result<Vec<TxStatus>, ApiError> {
-        if md5s.len() > MAX_BATCH {
-            return Err(ApiError::BatchTooLarge {
-                count: md5s.len(),
-                max: MAX_BATCH,
-            });
-        }
+        self.batch("/v1/check_transaction_by_md5_list", md5s).await
+    }
 
-        let envelope: Envelope<Vec<Value>> = self
-            .post("/v1/check_transaction_by_md5_list", json!(md5s))
-            .await?;
+    /// Asks about one payment by its full transaction hash.
+    pub async fn check_transaction_by_hash(&self, hash: &str) -> Result<TxStatus, ApiError> {
+        self.single("/v1/check_transaction_by_hash", json!({ "hash": hash }))
+            .await
+    }
 
-        Ok(envelope
-            .data
-            .unwrap_or_default()
-            .iter()
-            .map(status_of)
-            .collect())
+    /// Asks about up to 50 payments by full hash, answered in the order given.
+    pub async fn check_transaction_by_hash_list(
+        &self,
+        hashes: &[String],
+    ) -> Result<Vec<TxStatus>, ApiError> {
+        self.batch("/v1/check_transaction_by_hash_list", hashes)
+            .await
+    }
+
+    /// Asks about one payment by short hash, which needs the amount to disambiguate.
+    pub async fn check_transaction_by_short_hash(
+        &self,
+        hash: &str,
+        amount: f64,
+        currency: &str,
+    ) -> Result<TxStatus, ApiError> {
+        self.single(
+            "/v1/check_transaction_by_short_hash",
+            json!({ "hash": hash, "amount": amount, "currency": currency }),
+        )
+        .await
+    }
+
+    /// Asks about one payment by the instruction reference the sender used.
+    pub async fn check_transaction_by_instruction_ref(
+        &self,
+        reference: &str,
+    ) -> Result<TxStatus, ApiError> {
+        self.single(
+            "/v1/check_transaction_by_instruction_ref",
+            json!({ "instructionRef": reference }),
+        )
+        .await
+    }
+
+    /// Asks about one payment by your own external reference.
+    pub async fn check_transaction_by_external_ref(
+        &self,
+        reference: &str,
+    ) -> Result<TxStatus, ApiError> {
+        self.single(
+            "/v1/check_transaction_by_external_ref",
+            json!({ "externalRef": reference }),
+        )
+        .await
     }
 
     /// Turns a payload into a `bakong.page.link` the Bakong app can open.
@@ -146,6 +175,35 @@ impl BakongClient {
                 endpoint: "generate_deeplink_by_qr",
             })?
             .short_link)
+    }
+
+    async fn single(&self, path: &'static str, body: Value) -> Result<TxStatus, ApiError> {
+        let envelope: Envelope<Transaction> = self.post(path, body).await?;
+
+        Ok(match envelope.data {
+            Some(transaction) if envelope.response_code == 0 => {
+                TxStatus::Paid(Box::new(transaction))
+            }
+            _ => TxStatus::NotFound,
+        })
+    }
+
+    async fn batch(&self, path: &'static str, items: &[String]) -> Result<Vec<TxStatus>, ApiError> {
+        if items.len() > MAX_BATCH {
+            return Err(ApiError::BatchTooLarge {
+                count: items.len(),
+                max: MAX_BATCH,
+            });
+        }
+
+        let envelope: Envelope<Vec<Value>> = self.post(path, json!(items)).await?;
+
+        Ok(envelope
+            .data
+            .unwrap_or_default()
+            .iter()
+            .map(status_of)
+            .collect())
     }
 
     async fn post<T: DeserializeOwned>(

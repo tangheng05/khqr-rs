@@ -75,6 +75,10 @@ let qr = Khqr::individual("jonhsmith@nbcq")
 Riel is the default currency and gets no decimal places; dollars get two. An
 amount makes the QR single use, so tag `01` becomes `12` on its own.
 
+Field limits come from the reference SDK: 32 characters for account identifiers, 25 for
+labels, 15 for the city, 13 for the amount. Tag `15`, the UnionPay merchant account, is
+supported on both sides.
+
 Reading one back flattens every nested template into a single struct.
 
 ```rust

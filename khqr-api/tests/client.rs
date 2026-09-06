@@ -2,7 +2,7 @@
 
 use khqr_api::{ApiError, BakongClient, SourceInfo, TxStatus};
 use serde_json::json;
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn paid_body() -> serde_json::Value {
@@ -244,4 +244,78 @@ fn the_token_is_kept_out_of_debug_output() {
     let client = BakongClient::with_base_url("http://127.0.0.1:1", "supersecret");
 
     assert!(!format!("{client:?}").contains("supersecret"));
+}
+
+#[tokio::test]
+async fn every_single_transaction_endpoint_is_wired_up() {
+    let server = MockServer::start().await;
+    let endpoints = [
+        "/v1/check_transaction_by_hash",
+        "/v1/check_transaction_by_short_hash",
+        "/v1/check_transaction_by_instruction_ref",
+        "/v1/check_transaction_by_external_ref",
+    ];
+
+    for endpoint in endpoints {
+        mount(&server, endpoint, paid_body()).await;
+    }
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+
+    assert!(client
+        .check_transaction_by_hash("e40a")
+        .await
+        .unwrap()
+        .transaction()
+        .is_some());
+    assert!(client
+        .check_transaction_by_short_hash("e40a", 0.1, "USD")
+        .await
+        .unwrap()
+        .transaction()
+        .is_some());
+    assert!(client
+        .check_transaction_by_instruction_ref("INS-1")
+        .await
+        .unwrap()
+        .transaction()
+        .is_some());
+    assert!(client
+        .check_transaction_by_external_ref("EXT-1")
+        .await
+        .unwrap()
+        .transaction()
+        .is_some());
+}
+
+#[tokio::test]
+async fn the_short_hash_request_carries_the_amount_and_currency() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/check_transaction_by_short_hash"))
+        .and(body_json(
+            json!({ "hash": "e40a", "amount": 0.1, "currency": "USD" }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paid_body()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+
+    assert!(client
+        .check_transaction_by_short_hash("e40a", 0.1, "USD")
+        .await
+        .is_ok());
+}
+
+#[tokio::test]
+async fn the_hash_batch_shares_the_fifty_item_limit() {
+    let client = BakongClient::with_base_url("http://127.0.0.1:1", "token");
+    let hashes = vec!["a".to_string(); 51];
+
+    assert!(matches!(
+        client.check_transaction_by_hash_list(&hashes).await,
+        Err(ApiError::BatchTooLarge { count: 51, max: 50 })
+    ));
 }

@@ -3,6 +3,10 @@ use crate::{append_crc, format_tlv, Currency, KhqrError, MerchantType};
 const MAX_NAME: usize = 25;
 const MAX_CITY: usize = 15;
 const MAX_AMOUNT: usize = 13;
+const MAX_ACCOUNT: usize = 32;
+const MAX_LABEL: usize = 25;
+const MAX_TIMESTAMP: usize = 13;
+const MAX_UNION_PAY: usize = 99;
 const DEFAULT_CATEGORY_CODE: &str = "5999";
 const DEFAULT_COUNTRY_CODE: &str = "KH";
 
@@ -17,14 +21,14 @@ struct AdditionalData {
 }
 
 impl AdditionalData {
-    fn fields(&self) -> [(&'static str, &Option<String>); 6] {
+    fn fields(&self) -> [(&'static str, &'static str, &Option<String>); 6] {
         [
-            ("01", &self.bill_number),
-            ("02", &self.mobile_number),
-            ("03", &self.store_label),
-            ("05", &self.reference_label),
-            ("07", &self.terminal_label),
-            ("08", &self.purpose),
+            ("01", "bill number", &self.bill_number),
+            ("02", "mobile number", &self.mobile_number),
+            ("03", "store label", &self.store_label),
+            ("05", "reference label", &self.reference_label),
+            ("07", "terminal label", &self.terminal_label),
+            ("08", "purpose of transaction", &self.purpose),
         ]
     }
 }
@@ -43,6 +47,7 @@ pub struct Khqr {
     account_id: String,
     account_detail: Option<String>,
     acquiring_bank: Option<String>,
+    union_pay_merchant: Option<String>,
     merchant_category_code: String,
     currency: Currency,
     amount: Option<String>,
@@ -85,6 +90,11 @@ impl Khqr {
 
         let mut payload = format_tlv("00", "01")?;
         payload.push_str(&format_tlv("01", point_of_initiation)?);
+
+        if let Some(union_pay) = &self.union_pay_merchant {
+            payload.push_str(&format_tlv("15", union_pay)?);
+        }
+
         payload.push_str(&format_tlv(
             self.merchant_type.tag(),
             &self.account_template()?,
@@ -133,7 +143,7 @@ impl Khqr {
     fn additional_template(&self) -> Result<String, KhqrError> {
         let mut template = String::new();
 
-        for (tag, value) in self.additional.fields() {
+        for (tag, _, value) in self.additional.fields() {
             if let Some(value) = value {
                 template.push_str(&format_tlv(tag, value)?);
             }
@@ -171,6 +181,7 @@ pub struct KhqrBuilder {
     account_id: String,
     account_detail: Option<String>,
     acquiring_bank: Option<String>,
+    union_pay_merchant: Option<String>,
     merchant_category_code: Option<String>,
     currency: Currency,
     amount: Option<f64>,
@@ -190,6 +201,7 @@ impl KhqrBuilder {
             account_id,
             account_detail: None,
             acquiring_bank: None,
+            union_pay_merchant: None,
             merchant_category_code: None,
             currency: Currency::Khr,
             amount: None,
@@ -218,6 +230,12 @@ impl KhqrBuilder {
     /// Acquiring bank, sub-tag `02` of whichever account tag is in use.
     pub fn acquiring_bank(mut self, value: impl Into<String>) -> Self {
         self.acquiring_bank = Some(value.into());
+        self
+    }
+
+    /// UnionPay merchant account, tag `15`.
+    pub fn union_pay_merchant(mut self, value: impl Into<String>) -> Self {
+        self.union_pay_merchant = Some(value.into());
         self
     }
 
@@ -326,6 +344,31 @@ impl KhqrBuilder {
             return Err(invalid("account id", &self.account_id));
         }
 
+        capped(&self.account_id, "account id", MAX_ACCOUNT)?;
+
+        if let Some(detail) = &self.account_detail {
+            capped(detail, "account information", MAX_ACCOUNT)?;
+        }
+        if let Some(bank) = &self.acquiring_bank {
+            capped(bank, "acquiring bank", MAX_ACCOUNT)?;
+        }
+        if let Some(union_pay) = &self.union_pay_merchant {
+            capped(union_pay, "unionpay merchant", MAX_UNION_PAY)?;
+        }
+        for (_, field, value) in self.additional.fields() {
+            if let Some(value) = value {
+                capped(value, field, MAX_LABEL)?;
+            }
+        }
+        for (millis, field) in [
+            (self.created_at_ms, "creation timestamp"),
+            (self.expires_at_ms, "expiration timestamp"),
+        ] {
+            if let Some(millis) = millis {
+                capped(&millis.to_string(), field, MAX_TIMESTAMP)?;
+            }
+        }
+
         let merchant_name = required(self.merchant_name, "merchant name")?;
         capped(&merchant_name, "merchant name", MAX_NAME)?;
 
@@ -366,6 +409,7 @@ impl KhqrBuilder {
             account_id: self.account_id,
             account_detail: self.account_detail,
             acquiring_bank: self.acquiring_bank,
+            union_pay_merchant: self.union_pay_merchant,
             merchant_category_code,
             currency: self.currency,
             amount,

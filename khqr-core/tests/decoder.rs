@@ -86,6 +86,26 @@ fn the_production_vector_survives_its_vendor_extension() {
 }
 
 #[test]
+fn a_unionpay_merchant_account_is_decoded() {
+    let qr = append_crc(concat!(
+        "000201",
+        "010211",
+        "1510UPI-123456",
+        "29130009shop@aclb",
+        "52045999",
+        "5303116",
+        "5802KH",
+        "5904Shop",
+        "6010Phnom Penh",
+    ));
+
+    let decoded = decode(&qr).expect("payload must decode");
+
+    assert_eq!(decoded.union_pay_merchant.as_deref(), Some("UPI-123456"));
+    assert!(decoded.unknown.is_empty());
+}
+
+#[test]
 fn an_unknown_top_level_tag_is_kept() {
     let qr = append_crc(concat!(
         "000201",
