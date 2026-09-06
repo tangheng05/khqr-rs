@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>khqr-wasm browser test</title>
+<style>
+  body { font: 14px ui-monospace, monospace; padding: 24px; background: #111; color: #ddd; }
+  .pass { color: #4ade80; } .fail { color: #f87171; }
+  #summary { font-size: 20px; margin: 16px 0; }
+  img { background: #fff; padding: 8px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<h2>khqr-wasm, running in a real browser</h2>
+<div id="summary">running...</div>
+<pre id="out"></pre>
+<img id="qr" alt="generated qr">
+
+<script type="module">
+import init, { Khqr, decode, verify, md5, toSvg, toPng, toDataUri } from "./pkg/khqr_wasm.js";
+
+const VECTOR = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH99170013173949577872263046894";
+const out = document.getElementById("out");
+let pass = 0, fail = 0;
+
+function check(name, actual, expected) {
+  const ok = String(actual) === String(expected);
+  ok ? pass++ : fail++;
+  out.innerHTML += `<span class="${ok ? "pass" : "fail"}">${ok ? "PASS" : "FAIL"}</span> ${name}` +
+    (ok ? "\n" : `\n     expected ${expected}\n     actual   ${actual}\n`);
+}
+
+function checkThrows(name, fn) {
+  try { fn(); fail++; out.innerHTML += `<span class="fail">FAIL</span> ${name} (did not throw)\n`; }
+  catch (e) { pass++; out.innerHTML += `<span class="pass">PASS</span> ${name} -> ${e}\n`; }
+}
+
+try {
+  await init();
+  out.textContent += "wasm module instantiated\n\n";
+
+  // rebuild the published vector byte for byte
+  const b = Khqr.individual("jonhsmith@nbcq");
+  b.merchantName("Jonh Smith");
+  b.merchantCity("PHNOM PENH");
+  b.amount(500);
+  b.createdAtMs(1739495778722);
+  check("rebuilds published vector 1", b.build(), VECTOR);
+  check("md5 matches published handle", md5(VECTOR), "b1c250304b8594e4c6b53dd44791b57a");
+  check("verify accepts the vector", verify(VECTOR), true);
+  check("verify rejects a tampered vector", verify(VECTOR.replace("5802KH", "5802KM")), false);
+
+  // the builder must survive being built, the bug fixed in 0.1.1
+  b.amount(1000);
+  check("builder reusable after build", b.build().startsWith("000201010212"), true);
+
+  // decode getters
+  const d = decode(VECTOR);
+  check("decoded merchantName", d.merchantName, "Jonh Smith");
+  check("decoded bakongAccountId", d.bakongAccountId, "jonhsmith@nbcq");
+  check("decoded transactionAmount", d.transactionAmount, "500");
+  check("decoded merchantType", d.merchantType, "29");
+  check("decoded isDynamic", d.isDynamic, true);
+  check("decoded crc", d.crc, "6894");
+
+  // currency must not silently fall back to riel
+  const c = Khqr.merchant("shop@aclb");
+  c.merchantName("Shop"); c.merchantCity("Phnom Penh");
+  c.currency("USD"); c.amount(1.5);
+  check("usd writes two decimals", c.build().includes("54041.50"), true);
+  checkThrows("unknown currency throws", () => { c.currency("dollar"); });
+  checkThrows("bad account id throws", () => {
+    const x = Khqr.individual("no-bank"); x.merchantName("S"); x.merchantCity("P"); x.build();
+  });
+
+  // khmer, the multi byte case
+  const k = Khqr.individual("shop@aclb");
+  k.merchantName("Shop"); k.merchantCity("Phnom Penh");
+  k.alternateLanguage("KM", "ហាង", "ភ្នំពេញ");
+  const khmer = k.build();
+  check("khmer alternate language length", khmer.includes("64240002KM0103ហាង0207ភ្នំពេញ"), true);
+  check("khmer payload still verifies", verify(khmer), true);
+
+  // rendering
+  const svg = toSvg(VECTOR);
+  check("svg renders", svg.includes("<svg"), true);
+  const png = toPng(VECTOR, 320);
+  check("png magic bytes", png[0] === 0x89 && png[1] === 0x50, true);
+  const uri = toDataUri(VECTOR, 320);
+  check("data uri prefix", uri.startsWith("data:image/png;base64,"), true);
+  document.getElementById("qr").src = uri;
+  checkThrows("absurd png size throws", () => toPng(VECTOR, 100000));
+
+} catch (e) {
+  fail++;
+  out.innerHTML += `<span class="fail">FATAL</span> ${e}\n${e.stack || ""}\n`;
+}
+
+const s = document.getElementById("summary");
+s.textContent = `${pass} passed, ${fail} failed`;
+s.className = fail === 0 ? "pass" : "fail";
+document.title = fail === 0 ? `ALL ${pass} PASSED` : `${fail} FAILED`;
+</script>
+</body>
+</html>

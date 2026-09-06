@@ -3,6 +3,16 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
+## Unreleased
+
+### Added
+
+- A browser test for `khqr-wasm` under `khqr-wasm/tests/browser`. The Rust
+  unit tests run on the host, where `JsValue` cannot exist, so the bindings had
+  never been exercised as a browser sees them. The page runs the real wasm in a
+  real browser: 20 checks covering the published vector, the decode getters, the
+  currency guard, Khmer text and all three renderers.
+
 ## 0.1.4
 
 ### Changed
