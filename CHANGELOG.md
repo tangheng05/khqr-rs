@@ -3,10 +3,23 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
-## Unreleased
+## 0.1.2
+
+### Added
+
+- `Transaction` carries `instruction_ref`, `tracking_status`, `receiver_bank`
+  and `receiver_bank_account`, which the live service returns and this crate
+  was dropping.
 
 ### Changed
 
+- Verified end to end against production with a real payment. A QR built by
+  this library was scanned by a banking app, paid, and then found again by
+  MD5 handle, full hash, short hash, external reference and hash batch. The
+  MD5 computed locally matches the one Bakong indexes the transaction under.
+- `check_transaction_by_md5_list` returns a bare nginx 403 on production with a
+  valid token, whatever the request body. `check_transaction_by_hash_list`
+  works on the same token. Documented rather than worked around.
 - Checked against the live Bakong service for the first time. Confirmed:
   `check_bakong_account` needs no token and returns `errorCode: 11` for an
   unknown account; an expired token gives HTTP 401 with an envelope on most

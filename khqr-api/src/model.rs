@@ -40,6 +40,14 @@ pub struct Transaction {
     pub acknowledged_date_ms: Option<i64>,
     #[serde(default)]
     pub external_ref: Option<String>,
+    #[serde(default)]
+    pub instruction_ref: Option<String>,
+    #[serde(default)]
+    pub tracking_status: Option<String>,
+    #[serde(default)]
+    pub receiver_bank: Option<String>,
+    #[serde(default)]
+    pub receiver_bank_account: Option<String>,
 }
 
 /// The outcome of asking about one payment.

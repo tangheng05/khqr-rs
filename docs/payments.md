@@ -78,7 +78,7 @@ checks that before making a request rather than letting Bakong reject it.
 | Method | Asks by |
 | --- | --- |
 | `check_transaction_by_md5` | MD5 handle |
-| `check_transaction_by_md5_list` | up to 50 handles |
+| `check_transaction_by_md5_list` | up to 50 handles. See the warning below. |
 | `check_transaction_by_hash` | full transaction hash |
 | `check_transaction_by_hash_list` | up to 50 hashes |
 | `check_transaction_by_short_hash` | short hash, plus amount and currency |
@@ -87,6 +87,17 @@ checks that before making a request rather than letting Bakong reject it.
 | `check_bakong_account` | whether `name@bank` exists, and needs no token |
 | `generate_deeplink` | a `bakong.page.link` the Bakong app can open |
 | `renew_token` | your registered email |
+
+## One endpoint that does not work
+
+`check_transaction_by_md5_list` answers with a bare nginx `403 Forbidden` on
+production, with a valid token and whatever request body you send. Its sibling
+`check_transaction_by_hash_list` works normally on the same token, so this is
+the edge refusing the path rather than an auth or payload problem.
+
+The client reports it as `ApiError::Http { status: 403 }`. Until it comes back,
+poll single handles with `check_transaction_by_md5`, or batch by hash once you
+have hashes from a previous lookup.
 
 ## Deep links
 
