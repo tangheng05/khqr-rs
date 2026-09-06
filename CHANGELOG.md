@@ -3,6 +3,13 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
+## 0.1.4
+
+### Changed
+
+- Trimmed the README. The roadmap, the spec notes and the intro essay all said
+  things the docs already say better, and duplicated guidance drifts.
+
 ## 0.1.3
 
 ### Changed
