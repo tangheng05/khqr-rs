@@ -21,9 +21,8 @@ and the mobile bindings. Beyond that: [generating](https://github.com/tangheng05
 
 ## Status
 
-All five crates are published. Verified against production Bakong: a QR from
-this library was scanned by a banking app, paid, and found again through every
-lookup the API offers. The API will change before 1.0, so pin an exact version.
+All five crates are published and checked against the live Bakong API. The API
+will change before 1.0, so pin an exact version.
 
 | Crate | Purpose |
 | --- | --- |
@@ -38,9 +37,13 @@ lookup the API offers. The API will change before 1.0, so pin an exact version.
 ```
 khqr-rs/
 ├── Cargo.toml          workspace manifest
+├── docs/               the guides linked above
+├── fuzz/               cargo-fuzz targets for decode and parse_tlv
 ├── khqr-cli/           the khqr binary
-├── khqr-wasm/          wasm-bindgen over khqr-core
 ├── khqr-ffi/           uniffi bindings for Kotlin, Swift and Python
+├── khqr-wasm/
+│   ├── src/            wasm-bindgen over khqr-core
+│   └── tests/browser/  the bindings run in a real browser
 ├── khqr-api/
 │   ├── src/
 │   │   ├── backoff.rs  how long to wait before polling again
@@ -54,17 +57,19 @@ khqr-rs/
     │   ├── builder.rs  typed payload and its builder
     │   ├── crc.rs      crc-16/ccitt-false, checksum append and verify
     │   ├── decoder.rs  payload in, flattened fields out
-    │   ├── hash.rs     the md5 payment handle
     │   ├── error.rs    one error type for the whole crate
+    │   ├── hash.rs     the md5 payment handle
     │   ├── lib.rs
     │   ├── qr.rs       png and svg rendering, behind a feature
     │   ├── tlv.rs      tag-length-value encode and decode
     │   └── types.rs    currency and merchant type
     └── tests/
-        ├── common/     published KHQR payloads used as reference vectors
+        ├── common/          published KHQR payloads used as reference vectors
         ├── builder.rs
         ├── crc.rs
         ├── decoder.rs
+        ├── docs_snippets.rs the examples from docs/, compiled
+        ├── hostile.rs       forty thousand mutated payloads
         ├── qr.rs
         ├── tlv.rs
         └── vectors.rs
@@ -117,6 +122,10 @@ let png = khqr_core::to_png(&qr, 512)?;
 let svg = khqr_core::to_svg(&qr)?;
 ```
 
+The output is a plain code so you can lay your own card out around it. If you
+draw a logo over the middle, raise the error correction or it will scan
+unreliably: `to_png_with(&qr, &ImageOptions::with_overlay())`.
+
 Polling for payment is driven by you, never by a timer inside the client.
 
 ```rust
@@ -133,15 +142,18 @@ if status.is_pending() {
 ```
 
 A rejected token is renewed once and the call retried, so the 90 day expiry
-does not surface as a failure. Bakong geo-restricts, so expect HTTP 403 if you
-run this outside Cambodia.
+does not surface as a failure. An `Http { status: 403 }` means either the
+request came from outside Cambodia, which Bakong blocks, or the endpoint is
+closed to your token. `check_transaction_by_md5_list` currently answers 403 on
+production for everyone; use single lookups or `check_transaction_by_hash_list`.
 
 ## Command line
 
 ```sh
 cargo install khqr-cli
 
-khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh"     --amount 5000 --expires-in 300 --png qr.png
+khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh" \
+    --amount 5000 --expires-in 300 --png qr.png
 khqr decode "0002010102..."
 khqr verify "0002010102..."          # exits non zero if the checksum is wrong
 BAKONG_TOKEN=... khqr watch --md5 682f33ec80e311d909f91d70a70ab436
