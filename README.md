@@ -1,5 +1,11 @@
 # khqr-rs
 
+[![CI](https://github.com/tangheng05/khqr-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/tangheng05/khqr-rs/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/khqr-core.svg)](https://crates.io/crates/khqr-core)
+[![docs.rs](https://img.shields.io/docsrs/khqr-core)](https://docs.rs/khqr-core)
+[![license](https://img.shields.io/crates/l/khqr-core.svg)](https://github.com/tangheng05/khqr-rs/blob/main/LICENSE)
+[![msrv](https://img.shields.io/badge/msrv-1.75-blue.svg)](https://releases.rs/docs/1.75.0/)
+
 A Rust implementation of KHQR, the payment QR standard used by Bakong in Cambodia.
 
 KHQR is EMVCo merchant-presented QR: a flat ASCII string of nested tag-length-value
@@ -26,11 +32,11 @@ will change before 1.0, so pin an exact version.
 
 | Crate | Purpose | State |
 | --- | --- | --- |
-| `khqr-core` | TLV codec, CRC16, builder, decoder, MD5, images | usable |
-| `khqr-api` | Bakong Open API client | usable |
-| `khqr-cli` | `khqr gen`, `decode`, `verify`, `watch` | usable |
-| `khqr-wasm` | browser and Node bindings | usable |
-| `khqr-ffi` | Kotlin, Swift and Python bindings | usable |
+| [`khqr-core`](https://crates.io/crates/khqr-core) | TLV codec, CRC16, builder, decoder, MD5, images | usable |
+| [`khqr-api`](https://crates.io/crates/khqr-api) | Bakong Open API client | usable |
+| [`khqr-cli`](https://crates.io/crates/khqr-cli) | `khqr gen`, `decode`, `verify`, `watch` | usable |
+| [`khqr-wasm`](https://crates.io/crates/khqr-wasm) | browser and Node bindings | usable |
+| [`khqr-ffi`](https://crates.io/crates/khqr-ffi) | Kotlin, Swift and Python bindings | usable |
 
 ## Layout
 
