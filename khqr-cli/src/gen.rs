@@ -86,11 +86,10 @@ pub struct Args {
     /// Width of the PNG in pixels.
     #[arg(long, default_value_t = 512)]
     size: u32,
-    /// How much of the code can be covered and still read. Use high if you
-    /// intend to draw a logo over the middle.
+    /// Error correction. Use high if you draw a logo over the code.
     #[arg(long, value_enum, default_value_t = EccArg::Medium)]
     ecc: EccArg,
-    /// Blank modules around the code. Set 0 when your own layout pads it.
+    /// Blank modules around the code.
     #[arg(long, default_value_t = 4)]
     quiet_zone: u32,
 }

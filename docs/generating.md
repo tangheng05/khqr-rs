@@ -138,12 +138,10 @@ and hard for a phone to read.
 
 ### Drawing your own design around it
 
-The output is a plain black and white code on purpose, so you can lay it out
-however you like. Most web front ends put the merchant name, amount and the
-KHQR mark around it in HTML and absolutely position a logo over the middle,
-which stays crisp at any size and needs no image compositing.
-
-Two things matter if you do that.
+The output is a plain black and white code, so you can lay your own card out
+around it. If you overlay a logo, raise the error correction: `Medium` tolerates
+about 15% coverage and a centred roundel is usually closer to 18%, which makes
+the code scan on one phone and fail on the next.
 
 ```rust
 use khqr_core::{to_png_with, ErrorCorrection, ImageOptions};
@@ -155,15 +153,8 @@ let png = to_png_with(&qr, &ImageOptions {
 })?;
 ```
 
-**Error correction.** Anything covering the middle of a code eats into what the
-reader can recover. The default, `Medium`, tolerates about 15%. A typical
-centred roundel covers close to 18%, which is over budget: the code then scans
-on one phone and fails on the next. Use `High`, which tolerates about 30%.
-`ImageOptions::with_overlay()` is that setting under a shorter name.
-
-**Quiet zone.** The specification asks for four blank modules around the code,
-and that is the default. If your own card already pads the image, set it to
-zero rather than paying for the margin twice.
+`ImageOptions::with_overlay()` is that error correction under a shorter name.
+Set `quiet_zone` to zero when your own layout already pads the image.
 
 The KHQR logo and card artwork belong to the National Bank of Cambodia and
 must be used unmodified. They are deliberately not bundled here. Overlay them

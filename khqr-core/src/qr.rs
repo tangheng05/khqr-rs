@@ -8,21 +8,17 @@ const BASE64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 const QUIET_ZONE: u32 = 4;
 const MAX_SIZE: u32 = 4096;
 
-/// How much of a damaged or covered QR can still be read.
-///
-/// Anything drawn over the middle of a QR, a logo or a currency roundel, eats
-/// into this budget. Cover more than the level allows and the code scans on one
-/// phone and fails on the next.
+/// How much of a covered or damaged code can still be read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ErrorCorrection {
-    /// Recovers about 7%. Smallest image.
+    /// About 7%.
     Low,
-    /// Recovers about 15%. The default, and what the reference SDK uses.
+    /// About 15%.
     #[default]
     Medium,
-    /// Recovers about 25%.
+    /// About 25%.
     Quartile,
-    /// Recovers about 30%. Use this if you overlay anything.
+    /// About 30%. Use this if you draw anything over the code.
     High,
 }
 
@@ -40,12 +36,10 @@ impl From<ErrorCorrection> for EcLevel {
 /// How to draw the code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImageOptions {
-    /// Smallest acceptable width in pixels. Ignored by the SVG renderer.
+    /// Smallest width in pixels. The SVG renderer ignores it.
     pub size: u32,
-    /// How much damage the code can survive.
     pub error_correction: ErrorCorrection,
-    /// Blank modules around the code. The specification asks for 4. Set it to
-    /// zero when your own card already provides the padding.
+    /// Blank modules around the code. Zero if your layout already pads it.
     pub quiet_zone: u32,
 }
 
@@ -60,7 +54,7 @@ impl Default for ImageOptions {
 }
 
 impl ImageOptions {
-    /// Options for a code you intend to draw a logo over.
+    /// Defaults, but with the error correction a logo overlay needs.
     pub fn with_overlay() -> Self {
         Self {
             error_correction: ErrorCorrection::High,
@@ -84,9 +78,6 @@ pub fn to_png(qr: &str, size: u32) -> Result<Vec<u8>, KhqrError> {
 }
 
 /// Renders a PNG with the error correction and quiet zone you choose.
-///
-/// Use [`ImageOptions::with_overlay`] when something will be drawn over the
-/// middle of the code.
 pub fn to_png_with(qr: &str, options: &ImageOptions) -> Result<Vec<u8>, KhqrError> {
     let size = options.size;
     if size == 0 || size > MAX_SIZE {
@@ -136,7 +127,7 @@ pub fn to_svg(qr: &str) -> Result<String, KhqrError> {
     to_svg_with(qr, &ImageOptions::default())
 }
 
-/// Renders an SVG with the error correction and quiet zone you choose.
+/// Renders an SVG with those same options.
 pub fn to_svg_with(qr: &str, options: &ImageOptions) -> Result<String, KhqrError> {
     Ok(encode_with(qr, options.error_correction)?
         .render::<svg::Color>()
@@ -155,7 +146,7 @@ pub fn to_base64_uri(qr: &str, size: u32) -> Result<String, KhqrError> {
     )
 }
 
-/// A PNG data URI with the error correction and quiet zone you choose.
+/// A PNG data URI with those same options.
 pub fn to_base64_uri_with(qr: &str, options: &ImageOptions) -> Result<String, KhqrError> {
     let png = to_png_with(qr, options)?;
 
