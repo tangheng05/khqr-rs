@@ -32,6 +32,27 @@ pub enum KhqrError {
         /// Characters actually remaining.
         available: usize,
     },
+    /// A required field was never set.
+    MissingField {
+        /// Name of the missing field.
+        field: &'static str,
+    },
+    /// A field was longer than the specification allows.
+    FieldTooLong {
+        /// Name of the field.
+        field: &'static str,
+        /// Length in characters.
+        chars: usize,
+        /// Longest the field may be.
+        max: usize,
+    },
+    /// A field was set to something the specification does not accept.
+    InvalidField {
+        /// Name of the field.
+        field: &'static str,
+        /// The rejected value.
+        value: String,
+    },
     /// A value was longer than a two digit length field can express.
     ValueTooLong {
         /// The tag being written.
@@ -71,6 +92,15 @@ impl fmt::Display for KhqrError {
             }
             Self::ValueTooLong { tag, chars } => {
                 write!(f, "tag {tag} value is {chars} characters, the limit is 99")
+            }
+            Self::MissingField { field } => {
+                write!(f, "{field} is required")
+            }
+            Self::FieldTooLong { field, chars, max } => {
+                write!(f, "{field} is {chars} characters, the limit is {max}")
+            }
+            Self::InvalidField { field, value } => {
+                write!(f, "{field} {value:?} is not valid")
             }
         }
     }

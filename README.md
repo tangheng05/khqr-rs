@@ -30,12 +30,15 @@ khqr-rs/
 ├── Cargo.toml          workspace manifest
 └── khqr-core/
     ├── src/
+    │   ├── builder.rs  typed payload and its builder
     │   ├── crc.rs      crc-16/ccitt-false, checksum append and verify
     │   ├── error.rs    one error type for the whole crate
     │   ├── lib.rs
-    │   └── tlv.rs      tag-length-value encode and decode
+    │   ├── tlv.rs      tag-length-value encode and decode
+    │   └── types.rs    currency and merchant type
     └── tests/
         ├── common/     published KHQR payloads used as reference vectors
+        ├── builder.rs
         ├── crc.rs
         ├── tlv.rs
         └── vectors.rs
@@ -43,16 +46,21 @@ khqr-rs/
 
 ## Usage
 
-The codec is the only part that exists so far. Reading a payload gives you its
-fields; a template tag's value is another run of fields.
+Building a payload validates it, then writes the TLV string and its checksum.
 
 ```rust
-use khqr_core::parse_tlv;
+use khqr_core::Khqr;
 
-let fields = parse_tlv("0002010102115802KH")?;
-assert_eq!(fields[2].tag, "58");
-assert_eq!(fields[2].value, "KH");
+let qr = Khqr::individual("jonhsmith@nbcq")
+    .merchant_name("Jonh Smith")
+    .merchant_city("Phnom Penh")
+    .amount(500.0)
+    .build()?
+    .to_qr_string()?;
 ```
+
+Riel is the default currency and gets no decimal places; dollars get two. An
+amount makes the QR single use, so tag `01` becomes `12` on its own.
 
 ## Building
 

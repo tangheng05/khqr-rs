@@ -1,0 +1,186 @@
+//! Phase 3: the builder must reproduce the published vectors exactly.
+
+mod common;
+
+use khqr_core::{verify_crc, Currency, Khqr, KhqrError, MerchantType};
+
+const CREATED_AT: u64 = 1_739_495_778_722;
+
+#[test]
+fn the_individual_vector_is_rebuilt() {
+    let qr = Khqr::individual("jonhsmith@nbcq")
+        .merchant_name("Jonh Smith")
+        .merchant_city("PHNOM PENH")
+        .amount(500.0)
+        .created_at_ms(CREATED_AT)
+        .build()
+        .expect("vector fields are valid")
+        .to_qr_string()
+        .expect("vector must serialise");
+
+    assert_eq!(qr, common::INDIVIDUAL_KHR_500);
+}
+
+#[test]
+fn the_merchant_vector_is_rebuilt() {
+    let qr = Khqr::merchant("jonhsmith@nbcq")
+        .merchant_id("123456")
+        .acquiring_bank("Dev Bank")
+        .merchant_name("Jonh Smith")
+        .merchant_city("Siem Reap")
+        .mobile_number("85512345678")
+        .created_at_ms(CREATED_AT)
+        .build()
+        .expect("vector fields are valid")
+        .to_qr_string()
+        .expect("vector must serialise");
+
+    assert_eq!(qr, common::MERCHANT_KHR);
+}
+
+#[test]
+fn an_amount_makes_the_payload_dynamic() {
+    let dynamic = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .amount(1.0)
+        .build()
+        .expect("fields are valid");
+
+    let static_qr = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .build()
+        .expect("fields are valid");
+
+    assert!(dynamic.is_dynamic());
+    assert!(!static_qr.is_dynamic());
+    assert!(dynamic.to_qr_string().unwrap().starts_with("000201010212"));
+    assert!(static_qr
+        .to_qr_string()
+        .unwrap()
+        .starts_with("000201010211"));
+}
+
+#[test]
+fn built_payloads_carry_a_valid_checksum() {
+    let qr = Khqr::merchant("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .currency(Currency::Usd)
+        .amount(0.1)
+        .build()
+        .expect("fields are valid")
+        .to_qr_string()
+        .expect("payload must serialise");
+
+    assert!(verify_crc(&qr));
+    assert!(qr.contains("5303840"));
+    assert!(qr.contains("54040.10"));
+}
+
+#[test]
+fn the_merchant_type_picks_the_account_tag() {
+    let individual = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .build()
+        .expect("fields are valid");
+
+    assert_eq!(individual.merchant_type(), MerchantType::Individual);
+    assert!(individual.to_qr_string().unwrap().contains("2913"));
+}
+
+#[test]
+fn a_khmer_alternate_name_is_accepted() {
+    let qr = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .alternate_language("KM", "ហាង", "ភ្នំពេញ")
+        .build()
+        .expect("fields are valid")
+        .to_qr_string()
+        .expect("payload must serialise");
+
+    assert!(qr.contains("64240002KM0103ហាង0207ភ្នំពេញ"));
+    assert!(verify_crc(&qr));
+}
+
+#[test]
+fn an_account_id_must_name_a_bank() {
+    for account_id in ["jonhsmith", "@nbcq", "jonhsmith@", "a@b@c"] {
+        let result = Khqr::individual(account_id)
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .build();
+
+        assert!(result.is_err(), "{account_id:?} should be rejected");
+    }
+}
+
+#[test]
+fn the_merchant_name_and_city_are_capped() {
+    let long_name = Khqr::individual("shop@aclb")
+        .merchant_name("A".repeat(26))
+        .merchant_city("Phnom Penh")
+        .build()
+        .unwrap_err();
+
+    assert_eq!(
+        long_name,
+        KhqrError::FieldTooLong {
+            field: "merchant name",
+            chars: 26,
+            max: 25
+        }
+    );
+
+    let long_city = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("A".repeat(16))
+        .build()
+        .unwrap_err();
+
+    assert_eq!(
+        long_city,
+        KhqrError::FieldTooLong {
+            field: "merchant city",
+            chars: 16,
+            max: 15
+        }
+    );
+}
+
+#[test]
+fn the_name_and_city_are_required() {
+    assert_eq!(
+        Khqr::individual("shop@aclb")
+            .merchant_city("Phnom Penh")
+            .build()
+            .unwrap_err(),
+        KhqrError::MissingField {
+            field: "merchant name"
+        }
+    );
+
+    assert_eq!(
+        Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .build()
+            .unwrap_err(),
+        KhqrError::MissingField {
+            field: "merchant city"
+        }
+    );
+}
+
+#[test]
+fn a_negative_amount_is_rejected() {
+    let result = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .amount(-1.0)
+        .build();
+
+    assert!(result.is_err());
+}

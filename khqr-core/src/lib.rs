@@ -6,10 +6,14 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod builder;
 mod crc;
 mod error;
 mod tlv;
+mod types;
 
+pub use builder::{Khqr, KhqrBuilder};
 pub use crc::{append_crc, crc16_ccitt_false, verify_crc};
 pub use error::KhqrError;
 pub use tlv::{format_tlv, parse_tlv, Tlv};
+pub use types::{Currency, MerchantType};
