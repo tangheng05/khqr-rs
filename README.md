@@ -26,17 +26,16 @@ and the mobile bindings. Beyond that: [generating](https://github.com/tangheng05
 
 ## Status
 
-The codec, the API client, the CLI and all three binding targets are written and
-tested against the four published KHQR vectors. All five crates are on crates.io. The API will change before 1.0, so pin an
-exact version.
+All five crates are published and usable. The API will change before 1.0, so
+pin an exact version.
 
-| Crate | Purpose | State |
-| --- | --- | --- |
-| [`khqr-core`](https://crates.io/crates/khqr-core) | TLV codec, CRC16, builder, decoder, MD5, images | usable |
-| [`khqr-api`](https://crates.io/crates/khqr-api) | Bakong Open API client | usable |
-| [`khqr-cli`](https://crates.io/crates/khqr-cli) | `khqr gen`, `decode`, `verify`, `watch` | usable |
-| [`khqr-wasm`](https://crates.io/crates/khqr-wasm) | browser and Node bindings | usable |
-| [`khqr-ffi`](https://crates.io/crates/khqr-ffi) | Kotlin, Swift and Python bindings | usable |
+| Crate | Purpose |
+| --- | --- |
+| [`khqr-core`](https://crates.io/crates/khqr-core) | Codec, checksum, builder, decoder, MD5, images |
+| [`khqr-api`](https://crates.io/crates/khqr-api) | Bakong Open API client |
+| [`khqr-cli`](https://crates.io/crates/khqr-cli) | `khqr gen`, `decode`, `verify`, `watch` |
+| [`khqr-wasm`](https://crates.io/crates/khqr-wasm) | Browser and Node |
+| [`khqr-ffi`](https://crates.io/crates/khqr-ffi) | Kotlin, Swift and Python |
 
 ## Layout
 
