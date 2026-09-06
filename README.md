@@ -235,16 +235,6 @@ seed.
 Minimum supported Rust version is 1.88, checked in CI against that exact
 toolchain. The API will change before 1.0, so pin an exact version. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
-## Roadmap
-
-1. TLV codec, encode and decode, with correct handling of multi-byte values
-2. CRC-16/CCITT-FALSE, hand rolled
-3. Typed payloads and a builder with the spec's validation rules
-4. Full decoder, lenient about unknown tags and strict about the checksum
-5. PNG and SVG rendering behind a feature flag, plus the MD5 payment handle
-6. `khqr-api`, the async Bakong client
-7. WASM, UniFFI and CLI front ends
-
 ## Notes on the spec
 
 Two things are easy to get wrong and both break the checksum:
