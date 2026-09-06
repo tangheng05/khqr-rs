@@ -17,6 +17,11 @@ match status {
 }
 ```
 
+A payment that has not arrived is not an error. Bakong answers HTTP 200 with
+`responseCode: 1` and `errorCode: 1`, and that becomes `NotFound`. Any other
+code becomes an `ApiError`, so an outage or a throttle can never be mistaken
+for an unpaid order.
+
 ## Getting a token
 
 Register at <https://api-bakong.nbc.gov.kh/register>. Tokens last about 90
@@ -62,6 +67,25 @@ several thousand.
 
 `Backoff::with_bounds` changes the start and ceiling.  `reset()` starts the
 sequence over, which is what you want after showing a new QR.
+
+## What a paid transaction tells you
+
+Every field below came back from a real payment, and all but `hash` are
+optional because Bakong leaves them null when they do not apply.
+
+| Field | Example |
+| --- | --- |
+| `hash` | `296d729a1c8a7eee...` the full transaction hash |
+| `from_account_id` | `abaakhppxxx@abaa`, the payer |
+| `to_account_id` | `hengthegoat@aclb`, you |
+| `currency`, `amount` | `USD`, `0.01` |
+| `created_date_ms`, `acknowledged_date_ms` | epoch milliseconds |
+| `external_ref` | `100FT38906478429`, the payer bank's reference |
+| `description`, `instruction_ref` | usually null |
+| `tracking_status`, `receiver_bank`, `receiver_bank_account` | usually null |
+
+Unknown fields are ignored rather than rejected, so a new one Bakong adds will
+not break decoding.
 
 ## Asking about many at once
 

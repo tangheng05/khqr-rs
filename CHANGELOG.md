@@ -3,6 +3,13 @@
 This project follows [semantic versioning](https://semver.org). Until 1.0 the
 minor version is where breaking changes land, so pin an exact version.
 
+## Unreleased
+
+### Changed
+
+- Documented what a paid transaction carries, the confirmed not-found response,
+  and the payment check in the getting started guide.
+
 ## 0.1.2
 
 ### Added

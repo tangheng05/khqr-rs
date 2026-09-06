@@ -118,6 +118,20 @@ Dart is not one of the languages UniFFI generates. The third party
 `uniffi-dart` bindgen reads the same compiled library, and the Rust side
 needs no changes for it.
 
+## Checking payments
+
+Generating needs no token. Checking whether a QR was paid does, and that call
+belongs on your server rather than in a browser or a phone app.
+
+```rust
+use khqr_api::{BakongClient, Environment};
+
+let client = BakongClient::new(Environment::Production, token);
+let status = client.check_transaction_by_md5(&handle).await?;
+```
+
+See [checking payments](payments.md) for polling, token renewal and the traps.
+
 ## Next
 
 [Generating](generating.md) covers the rest of the fields and the rules the

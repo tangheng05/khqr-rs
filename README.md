@@ -26,8 +26,9 @@ and the mobile bindings. Beyond that: [generating](https://github.com/tangheng05
 
 ## Status
 
-All five crates are published and usable. The API will change before 1.0, so
-pin an exact version.
+All five crates are published. Verified against production Bakong: a QR from
+this library was scanned by a banking app, paid, and found again through every
+lookup the API offers. The API will change before 1.0, so pin an exact version.
 
 | Crate | Purpose |
 | --- | --- |
