@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["khqr-api", "khqr-cli", "khqr-core", "khqr-wasm"]
+members = ["khqr-api", "khqr-cli", "khqr-core", "khqr-ffi", "khqr-wasm"]
 
 [workspace.package]
 version = "0.1.0"

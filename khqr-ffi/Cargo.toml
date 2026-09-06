@@ -1,0 +1,24 @@
+[package]
+name = "khqr-ffi"
+description = "Kotlin, Swift and Python bindings for Cambodia's KHQR payment QR standard"
+keywords = ["khqr", "bakong", "cambodia", "uniffi", "ffi"]
+categories = ["api-bindings"]
+readme = "../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "khqr_ffi"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+
+[dependencies]
+khqr-core = { workspace = true, features = ["image"] }
+uniffi = { version = "0.32.0", features = ["cli"] }
