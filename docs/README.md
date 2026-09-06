@@ -45,4 +45,4 @@ If you are building a checkout, you want an amount.
 
 The API will change before 1.0. Pin an exact version until then.
 
-Minimum supported Rust version is 1.75, checked in CI.
+Minimum supported Rust version is 1.88, checked in CI against that toolchain.

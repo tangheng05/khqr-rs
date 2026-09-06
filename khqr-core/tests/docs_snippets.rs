@@ -1,9 +1,6 @@
 //! The snippets printed in docs/, compiled so they cannot rot.
 
-use khqr_core::{
-    decode, format_tlv, md5, parse_tlv, to_base64_uri, to_png, to_svg, verify_crc, Currency, Khqr,
-    KhqrError,
-};
+use khqr_core::{decode, format_tlv, md5, parse_tlv, verify_crc, Currency, Khqr, KhqrError};
 
 const VECTOR: &str = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH99170013173949577872263046894";
 
@@ -85,6 +82,8 @@ fn khmer_alternate_language_snippet() -> Result<(), KhqrError> {
     Ok(())
 }
 
+// Uses Box<dyn Error>, which KhqrError only implements with std.
+#[cfg(feature = "std")]
 #[test]
 fn decoding_snippets() -> Result<(), Box<dyn std::error::Error>> {
     let decoded = decode(VECTOR)?;
@@ -118,8 +117,11 @@ fn tlv_round_trip_snippet() -> Result<(), KhqrError> {
     Ok(())
 }
 
+#[cfg(feature = "image")]
 #[test]
 fn image_snippets() -> Result<(), KhqrError> {
+    use khqr_core::{to_base64_uri, to_png, to_svg};
+
     let png = to_png(VECTOR, 512)?;
     let svg = to_svg(VECTOR)?;
     let uri = to_base64_uri(VECTOR, 512)?;

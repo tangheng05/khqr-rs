@@ -69,9 +69,11 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
     };
 
     if !verify_crc(qr) {
+        let expected = checksum_of(qr, crc.chars().count());
+
         return Err(KhqrError::ChecksumMismatch {
             found: crc,
-            expected: checksum_of(qr),
+            expected,
         });
     }
 
@@ -85,31 +87,50 @@ pub fn decode(qr: &str) -> Result<DecodedKhqr, KhqrError> {
     let mut country_code = None;
     let mut merchant_name = None;
     let mut merchant_city = None;
-    let mut additional = Vec::new();
-    let mut language = Vec::new();
-    let mut timestamps = Vec::new();
+    let mut additional = None;
+    let mut language = None;
+    let mut timestamps = None;
     let mut unknown = Vec::new();
 
     for field in fields {
-        match field.tag.as_str() {
-            "00" => payload_format_indicator = Some(field.value),
-            "01" => point_of_initiation_method = Some(field.value),
-            "15" => union_pay_merchant = Some(field.value),
-            "29" => account = Some((MerchantType::Individual, parse_tlv(&field.value)?)),
-            "30" => account = Some((MerchantType::Merchant, parse_tlv(&field.value)?)),
-            "52" => merchant_category_code = Some(field.value),
-            "53" => transaction_currency = Some(field.value),
-            "54" => transaction_amount = Some(field.value),
-            "58" => country_code = Some(field.value),
-            "59" => merchant_name = Some(field.value),
-            "60" => merchant_city = Some(field.value),
-            "62" => additional = parse_tlv(&field.value)?,
-            "64" => language = parse_tlv(&field.value)?,
-            "99" => timestamps = parse_tlv(&field.value)?,
-            "63" => {}
-            _ => unknown.push(field),
+        let tag = field.tag.clone();
+
+        let taken = match tag.as_str() {
+            "00" => payload_format_indicator.replace(field.value).is_some(),
+            "01" => point_of_initiation_method.replace(field.value).is_some(),
+            "15" => union_pay_merchant.replace(field.value).is_some(),
+            // 29 and 30 share one slot, so a payload carrying both is refused
+            // rather than quietly routing to whichever came last.
+            "29" => account
+                .replace((MerchantType::Individual, parse_tlv(&field.value)?))
+                .is_some(),
+            "30" => account
+                .replace((MerchantType::Merchant, parse_tlv(&field.value)?))
+                .is_some(),
+            "52" => merchant_category_code.replace(field.value).is_some(),
+            "53" => transaction_currency.replace(field.value).is_some(),
+            "54" => transaction_amount.replace(field.value).is_some(),
+            "58" => country_code.replace(field.value).is_some(),
+            "59" => merchant_name.replace(field.value).is_some(),
+            "60" => merchant_city.replace(field.value).is_some(),
+            "62" => additional.replace(parse_tlv(&field.value)?).is_some(),
+            "64" => language.replace(parse_tlv(&field.value)?).is_some(),
+            "99" => timestamps.replace(parse_tlv(&field.value)?).is_some(),
+            "63" => false,
+            _ => {
+                unknown.push(field);
+                false
+            }
+        };
+
+        if taken {
+            return Err(KhqrError::DuplicateTag { tag });
         }
     }
+
+    let additional = additional.unwrap_or_default();
+    let language = language.unwrap_or_default();
+    let timestamps = timestamps.unwrap_or_default();
 
     let (merchant_type, account_fields) = account.ok_or_else(|| missing("account template"))?;
     let account_detail = value_of(&account_fields, "01");
@@ -174,16 +195,23 @@ fn value_of(fields: &[Tlv], tag: &str) -> Option<String> {
 
 fn millis(fields: &[Tlv], tag: &str, field: &'static str) -> Result<Option<u64>, KhqrError> {
     match value_of(fields, tag) {
-        Some(value) => value
-            .parse()
-            .map(Some)
-            .map_err(|_| KhqrError::InvalidField { field, value }),
+        Some(value) => {
+            if !value.bytes().all(|byte| byte.is_ascii_digit()) {
+                return Err(KhqrError::InvalidField { field, value });
+            }
+
+            value
+                .parse()
+                .map(Some)
+                .map_err(|_| KhqrError::InvalidField { field, value })
+        }
         None => Ok(None),
     }
 }
 
-fn checksum_of(qr: &str) -> String {
-    let body: String = qr.chars().take(qr.chars().count() - 4).collect();
+fn checksum_of(qr: &str, checksum_length: usize) -> String {
+    let kept = qr.chars().count().saturating_sub(checksum_length);
+    let body: String = qr.chars().take(kept).collect();
 
     format!("{:04X}", crc16_ccitt_false(body.as_bytes()))
 }

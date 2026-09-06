@@ -138,6 +138,10 @@ its own records. If you need to know who paid, generate a dynamic QR.
 | `MissingData` | A successful response arrived without the data it should carry. |
 | `NoRenewalEmail` | Renewal was attempted with no email set. |
 | `BatchTooLarge` | More than 50 items. Caught before any request goes out. |
+| `BatchMismatch` | A batch answered with a different number of results than were asked about, so they cannot be lined up. |
+| `Http` | A non JSON error response. `Http { status: 403 }` is the geo restriction above. |
+
+`ApiError` is `#[non_exhaustive]`, so a `match` on it needs a wildcard arm.
 
 A rejected token comes back with the same JSON envelope as a success, so the
 message from Bakong is preserved rather than replaced with a status code.

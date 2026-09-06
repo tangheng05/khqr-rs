@@ -14,6 +14,9 @@ authors.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 khqr-core = { workspace = true, features = ["image"] }
 wasm-bindgen = "0.2.117"

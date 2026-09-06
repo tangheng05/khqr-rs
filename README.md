@@ -4,7 +4,7 @@
 [![crates.io](https://img.shields.io/crates/v/khqr-core.svg)](https://crates.io/crates/khqr-core)
 [![docs.rs](https://img.shields.io/docsrs/khqr-core)](https://docs.rs/khqr-core)
 [![license](https://img.shields.io/crates/l/khqr-core.svg)](https://github.com/tangheng05/khqr-rs/blob/main/LICENSE)
-[![msrv](https://img.shields.io/badge/msrv-1.75-blue.svg)](https://releases.rs/docs/1.75.0/)
+[![msrv](https://img.shields.io/badge/msrv-1.88-blue.svg)](https://releases.rs/docs/1.88.0/)
 
 A Rust implementation of KHQR, the payment QR standard used by Bakong in Cambodia.
 
@@ -27,8 +27,8 @@ and the mobile bindings. Beyond that: [generating](https://github.com/tangheng05
 ## Status
 
 The codec, the API client, the CLI and all three binding targets are written and
-tested against the four published KHQR vectors. Not on crates.io yet, and the API
-will change before 1.0, so pin an exact version.
+tested against the four published KHQR vectors. All five crates are on crates.io. The API will change before 1.0, so pin an
+exact version.
 
 | Crate | Purpose | State |
 | --- | --- | --- |
@@ -144,7 +144,7 @@ run this outside Cambodia.
 ## Command line
 
 ```sh
-cargo install --path khqr-cli
+cargo install khqr-cli
 
 khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh"     --amount 5000 --expires-in 300 --png qr.png
 khqr decode "0002010102..."
@@ -166,13 +166,16 @@ wasm-pack build khqr-wasm --target web
 ```
 
 ```js
-const qr = new Khqr.individual("shop@aclb");
+import init, { Khqr, toDataUri } from "./pkg/khqr_wasm.js";
+
+await init();
+
+const qr = Khqr.individual("shop@aclb");
 qr.merchantName("Coffee Klaing");
 qr.merchantCity("Phnom Penh");
 qr.amount(5000);
-const payload = qr.build();
 
-document.querySelector("img").src = toDataUri(payload, 512);
+document.querySelector("img").src = toDataUri(qr.build(), 512);
 ```
 
 ## Kotlin, Swift and Python
@@ -182,8 +185,13 @@ an Android app, an iOS app and a Python service.
 
 ```sh
 cargo build -p khqr-ffi --release
-cargo run -p khqr-ffi --bin uniffi-bindgen -- generate     --library target/release/libkhqr_ffi.so     --language kotlin --language swift --language python     --out-dir bindings
+cargo run -p khqr-ffi --bin uniffi-bindgen -- generate \
+    --library target/release/libkhqr_ffi.so \
+    --language kotlin --language swift --language python \
+    --out-dir bindings
 ```
+
+On macOS that library is `libkhqr_ffi.dylib`, and on Windows `khqr_ffi.dll`.
 
 ```python
 import khqr_ffi as khqr
@@ -224,8 +232,8 @@ seed.
 
 ## Versioning
 
-Minimum supported Rust version is 1.75, checked in CI. The API will change
-before 1.0, so pin an exact version. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
+Minimum supported Rust version is 1.88, checked in CI against that exact
+toolchain. The API will change before 1.0, so pin an exact version. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
 ## Roadmap
 
@@ -244,8 +252,9 @@ Two things are easy to get wrong and both break the checksum:
 - Lengths count characters of the value and are always two digits, so `04` and not `4`.
 - KHR amounts carry no decimals, USD amounts carry two.
 
-Any QR with an amount is dynamic, which means tag `01` must be `12` and tag `99` must
-carry an expiry timestamp. A QR without an amount is static and cannot be tracked by MD5.
+Any QR with an amount is dynamic, so tag `01` becomes `12`. A QR without an amount
+is static and cannot be tracked by MD5. Tag `99` can carry an expiry, which this
+library does not require.
 
 The KHQR logo and card assets belong to the National Bank of Cambodia and must be used
 unmodified. They are deliberately not bundled here.

@@ -11,6 +11,9 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 image = { version = "0.25.6", default-features = false, features = ["png"], optional = true }
 md-5 = { version = "0.10.6", default-features = false }

@@ -45,6 +45,12 @@ pub enum KhqrError {
         /// What went wrong.
         reason: String,
     },
+    /// A tag appeared more than once. EMVCo allows each at most once, and
+    /// accepting a repeat lets someone append a field and recompute the checksum.
+    DuplicateTag {
+        /// The repeated tag.
+        tag: String,
+    },
     /// A required field was never set.
     MissingField {
         /// Name of the missing field.
@@ -111,6 +117,9 @@ impl fmt::Display for KhqrError {
             }
             Self::Render { reason } => {
                 write!(f, "could not render the qr image: {reason}")
+            }
+            Self::DuplicateTag { tag } => {
+                write!(f, "tag {tag} appears more than once")
             }
             Self::MissingField { field } => {
                 write!(f, "{field} is required")

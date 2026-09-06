@@ -99,3 +99,45 @@ fn images_render_through_the_boundary() {
 
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
 }
+
+#[test]
+fn two_fields_that_share_one_slot_are_refused() {
+    let error = generate(KhqrOptions {
+        account_information: Some("ACCTINFO".to_string()),
+        merchant_id: Some("MID99".to_string()),
+        ..options(MerchantType::Merchant, "shop@aclb")
+    })
+    .expect_err("one of them would have been dropped in silence");
+
+    let KhqrError::Invalid { message } = error;
+    assert!(message.contains("only one"), "{message}");
+}
+
+#[test]
+fn a_half_filled_alternate_language_is_refused() {
+    let error = generate(KhqrOptions {
+        language_preference: Some("KM".to_string()),
+        merchant_name_alternate: Some("KHMERNAME".to_string()),
+        ..options(MerchantType::Individual, "shop@aclb")
+    })
+    .expect_err("the city is missing, so the template would have vanished");
+
+    let KhqrError::Invalid { message } = error;
+    assert!(message.contains("together"), "{message}");
+}
+
+#[test]
+fn a_complete_alternate_language_is_written() {
+    let qr = generate(KhqrOptions {
+        language_preference: Some("KM".to_string()),
+        merchant_name_alternate: Some("Shop".to_string()),
+        merchant_city_alternate: Some("Phnom Penh".to_string()),
+        ..options(MerchantType::Individual, "shop@aclb")
+    })
+    .expect("all three parts are set");
+
+    assert_eq!(
+        decode(qr).expect("decodes").language_preference.as_deref(),
+        Some("KM")
+    );
+}

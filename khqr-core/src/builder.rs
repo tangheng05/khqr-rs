@@ -9,6 +9,7 @@ const MAX_ACCOUNT: usize = 32;
 const MAX_LABEL: usize = 25;
 const MAX_TIMESTAMP: usize = 13;
 const MAX_UNION_PAY: usize = 99;
+const MAX_SCALED_AMOUNT: f64 = 1e15;
 const DEFAULT_CATEGORY_CODE: &str = "5999";
 const DEFAULT_COUNTRY_CODE: &str = "KH";
 
@@ -360,6 +361,7 @@ impl KhqrBuilder {
         for (_, field, value) in self.additional.fields() {
             if let Some(value) = value {
                 capped(value, field, MAX_LABEL)?;
+                printable(value, field)?;
             }
         }
         for (millis, field) in [
@@ -373,9 +375,11 @@ impl KhqrBuilder {
 
         let merchant_name = required(self.merchant_name, "merchant name")?;
         capped(&merchant_name, "merchant name", MAX_NAME)?;
+        printable(&merchant_name, "merchant name")?;
 
         let merchant_city = required(self.merchant_city, "merchant city")?;
         capped(&merchant_city, "merchant city", MAX_CITY)?;
+        printable(&merchant_city, "merchant city")?;
 
         let merchant_category_code = self
             .merchant_category_code
@@ -394,9 +398,16 @@ impl KhqrBuilder {
         }
 
         if let Some(language) = &self.alternate_language {
-            if language.preference.chars().count() != 2 {
+            if language.preference.chars().count() != 2
+                || !language
+                    .preference
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphabetic())
+            {
                 return Err(invalid("language preference", &language.preference));
             }
+            printable(&language.name, "alternate merchant name")?;
+            printable(&language.city, "alternate merchant city")?;
             capped(&language.name, "alternate merchant name", MAX_NAME)?;
             capped(&language.city, "alternate merchant city", MAX_CITY)?;
         }
@@ -448,19 +459,66 @@ fn capped(value: &str, field: &'static str, max: usize) -> Result<(), KhqrError>
 }
 
 fn is_account_id(account_id: &str) -> bool {
+    if account_id
+        .chars()
+        .any(|c| c.is_control() || c.is_whitespace())
+    {
+        return false;
+    }
+
     match account_id.split_once('@') {
         Some((name, bank)) => !name.is_empty() && !bank.is_empty() && !bank.contains('@'),
         None => false,
     }
 }
 
+/// Rejects an empty value, and any control character that would let a name
+/// carry a newline or a null into the payload.
+fn printable(value: &str, field: &'static str) -> Result<(), KhqrError> {
+    if value.is_empty() || value.chars().any(char::is_control) {
+        return Err(invalid(field, value));
+    }
+
+    Ok(())
+}
+
+/// Rounds and writes an amount for its currency.
+///
+/// Ties round away from zero to match the reference SDK's `toFixed`. Rust's
+/// float formatting rounds them to even instead, which would put a different
+/// amount, and so a different checksum, on the wire for values like `500.5`.
 fn format_amount(amount: f64, currency: Currency) -> Result<String, KhqrError> {
-    if !amount.is_finite() || amount < 0.0 {
+    if !amount.is_finite() || amount.is_sign_negative() {
         return Err(invalid("amount", &amount.to_string()));
     }
 
     let decimals = currency.decimals();
-    let text = format!("{amount:.decimals$}");
+    let divisor = 10u64.pow(decimals as u32);
+    let scaled = amount * divisor as f64;
+
+    if scaled >= MAX_SCALED_AMOUNT {
+        return Err(invalid("amount", &amount.to_string()));
+    }
+
+    // Truncate, then carry when the remainder reaches a half. `f64::round`
+    // would do this in one step but is not available without std.
+    let whole = scaled as u64;
+    let units = if scaled - whole as f64 >= 0.5 {
+        whole + 1
+    } else {
+        whole
+    };
+    let text = if decimals == 0 {
+        units.to_string()
+    } else {
+        format!(
+            "{}.{:0>width$}",
+            units / divisor,
+            units % divisor,
+            width = decimals
+        )
+    };
+
     capped(&text, "amount", MAX_AMOUNT)?;
 
     Ok(text)

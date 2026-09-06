@@ -85,7 +85,12 @@ pub fn run(args: &Args) -> Result<(), Box<dyn Error>> {
         builder = builder.amount(amount);
     }
     if let Some(seconds) = args.expires_in {
-        builder = builder.expires_at_ms(created_at + seconds * 1_000);
+        let expires_at = seconds
+            .checked_mul(1_000)
+            .and_then(|millis| created_at.checked_add(millis))
+            .ok_or("expires-in is too far in the future")?;
+
+        builder = builder.expires_at_ms(expires_at);
     }
 
     builder = optional(builder, args);

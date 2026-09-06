@@ -98,3 +98,37 @@ fn an_invalid_account_is_reported() {
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("account id"));
 }
+
+#[test]
+fn an_absurd_expiry_is_refused_rather_than_wrapping() {
+    let output = khqr(&[
+        "gen",
+        "--account",
+        "shop@aclb",
+        "--name",
+        "Shop",
+        "--city",
+        "Phnom Penh",
+        "--expires-in",
+        "18446744073709552",
+    ]);
+
+    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(1), "it must not panic");
+}
+
+#[test]
+fn an_absurd_timeout_is_refused_rather_than_panicking() {
+    let output = khqr(&[
+        "watch",
+        "--md5",
+        "abc",
+        "--token",
+        "t",
+        "--timeout",
+        "18446744073709551615",
+    ]);
+
+    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(1), "it must not panic");
+}

@@ -5,8 +5,11 @@ use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use std::fmt;
 use std::sync::RwLock;
+use std::time::Duration;
 
 const MAX_BATCH: usize = 50;
+const NOT_FOUND: i64 = 1;
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// A client for the Bakong Open API.
 ///
@@ -28,7 +31,10 @@ impl BakongClient {
     /// Talks to any host, which is how the test suite points it at a mock.
     pub fn with_base_url(base_url: impl Into<String>, token: impl Into<String>) -> Self {
         Self {
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .timeout(REQUEST_TIMEOUT)
+                .build()
+                .unwrap_or_default(),
             base_url: base_url.into().trim_end_matches('/').to_string(),
             token: RwLock::new(token.into()),
             renewal_email: None,
@@ -57,13 +63,27 @@ impl BakongClient {
             .send()
             .await?;
 
+        let status = response.status();
         let envelope: Envelope<Token> = response.json().await?;
+
+        if !status.is_success() || envelope.response_code != 0 {
+            return Err(ApiError::Unauthorized {
+                message: envelope.response_message.unwrap_or_default(),
+            });
+        }
+
         let token = envelope
             .data
             .ok_or(ApiError::MissingData {
                 endpoint: "renew_token",
             })?
             .token;
+
+        if token.is_empty() {
+            return Err(ApiError::MissingData {
+                endpoint: "renew_token",
+            });
+        }
 
         self.write_token(&token);
 
@@ -79,7 +99,14 @@ impl BakongClient {
             )
             .await?;
 
-        Ok(envelope.response_code == 0)
+        if envelope.response_code == 0 {
+            return Ok(true);
+        }
+        if envelope.error_code.is_some() {
+            return Ok(false);
+        }
+
+        Err(bakong(envelope.error_code, envelope.response_message))
     }
 
     /// Asks about one payment by its MD5 handle.
@@ -180,15 +207,24 @@ impl BakongClient {
     async fn single(&self, path: &'static str, body: Value) -> Result<TxStatus, ApiError> {
         let envelope: Envelope<Transaction> = self.post(path, body).await?;
 
-        Ok(match envelope.data {
-            Some(transaction) if envelope.response_code == 0 => {
-                TxStatus::Paid(Box::new(transaction))
-            }
-            _ => TxStatus::NotFound,
-        })
+        if envelope.response_code == 0 {
+            return Ok(match envelope.data {
+                Some(transaction) => TxStatus::Paid(Box::new(transaction)),
+                None => TxStatus::NotFound,
+            });
+        }
+
+        if envelope.error_code == Some(NOT_FOUND) {
+            return Ok(TxStatus::NotFound);
+        }
+
+        Err(bakong(envelope.error_code, envelope.response_message))
     }
 
     async fn batch(&self, path: &'static str, items: &[String]) -> Result<Vec<TxStatus>, ApiError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
         if items.len() > MAX_BATCH {
             return Err(ApiError::BatchTooLarge {
                 count: items.len(),
@@ -198,12 +234,19 @@ impl BakongClient {
 
         let envelope: Envelope<Vec<Value>> = self.post(path, json!(items)).await?;
 
-        Ok(envelope
-            .data
-            .unwrap_or_default()
-            .iter()
-            .map(status_of)
-            .collect())
+        if envelope.response_code != 0 && envelope.error_code != Some(NOT_FOUND) {
+            return Err(bakong(envelope.error_code, envelope.response_message));
+        }
+
+        let returned = envelope.data.unwrap_or_default();
+        if returned.len() != items.len() {
+            return Err(ApiError::BatchMismatch {
+                requested: items.len(),
+                returned: returned.len(),
+            });
+        }
+
+        returned.iter().map(status_of).collect()
     }
 
     async fn post<T: DeserializeOwned>(
@@ -218,8 +261,23 @@ impl BakongClient {
             response = self.send(path, &body).await?;
         }
 
-        let unauthorized = response.status() == StatusCode::UNAUTHORIZED;
-        let envelope: Envelope<T> = response.json().await?;
+        let status = response.status();
+        let unauthorized = status == StatusCode::UNAUTHORIZED;
+
+        let envelope: Envelope<T> = match response.json().await {
+            Ok(envelope) => envelope,
+            Err(error) if unauthorized => {
+                return Err(ApiError::Unauthorized {
+                    message: error.to_string(),
+                })
+            }
+            Err(_) if !status.is_success() => {
+                return Err(ApiError::Http {
+                    status: status.as_u16(),
+                })
+            }
+            Err(error) => return Err(ApiError::Transport(error)),
+        };
 
         if unauthorized {
             return Err(ApiError::Unauthorized {
@@ -272,19 +330,33 @@ impl fmt::Debug for BakongClient {
     }
 }
 
+fn bakong(code: Option<i64>, message: Option<String>) -> ApiError {
+    ApiError::Bakong {
+        code,
+        message: message.unwrap_or_default(),
+    }
+}
+
 /// Batch items carry their own status, and the transaction either inline or
-/// under `data` depending on the endpoint.
-fn status_of(item: &Value) -> TxStatus {
+/// under `data` depending on the endpoint. An item Bakong called SUCCESS is
+/// never downgraded to NotFound, because that reports a paid order as unpaid.
+fn status_of(item: &Value) -> Result<TxStatus, ApiError> {
     match item.get("status").and_then(Value::as_str) {
-        Some("STATIC_QR") => TxStatus::StaticQr,
         Some("SUCCESS") => {
             let payload = item.get("data").unwrap_or(item);
 
-            match serde_json::from_value::<Transaction>(payload.clone()) {
-                Ok(transaction) => TxStatus::Paid(Box::new(transaction)),
-                Err(_) => TxStatus::NotFound,
-            }
+            serde_json::from_value::<Transaction>(payload.clone())
+                .map(|transaction| TxStatus::Paid(Box::new(transaction)))
+                .map_err(|error| ApiError::Bakong {
+                    code: None,
+                    message: format!("a paid transaction could not be read: {error}"),
+                })
         }
-        _ => TxStatus::NotFound,
+        Some("NOT_FOUND") => Ok(TxStatus::NotFound),
+        Some("STATIC_QR") => Ok(TxStatus::StaticQr),
+        other => Err(ApiError::Bakong {
+            code: None,
+            message: format!("unrecognised batch status {other:?}"),
+        }),
     }
 }

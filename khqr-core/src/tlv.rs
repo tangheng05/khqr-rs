@@ -127,6 +127,7 @@ fn two_digit_value(field: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     /// "Phnom Penh" in Khmer: seven characters, twenty one bytes.
     const KHMER_CITY: &str = "ភ្នំពេញ";

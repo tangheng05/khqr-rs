@@ -79,8 +79,14 @@ These come from the reference SDK and are enforced in `build()`.
 | Terminal label | `terminal_label` | 25 |
 | Purpose of transaction | `purpose_of_transaction` | 25 |
 | UnionPay merchant | `union_pay_merchant` | 99 |
+| Amount | `amount` | 13, after formatting |
+| Creation and expiry | `created_at_ms`, `expires_at_ms` | 13 digits |
 | Merchant category code | `merchant_category_code` | exactly 4 digits |
 | Country code | `country_code` | exactly 2 upper case letters |
+| Language preference | `alternate_language` | exactly 2 letters |
+
+Required text fields may not be empty, and no field may carry a control
+character such as a newline or a null.
 
 Name and city are required. The category code defaults to `5999`, which means
 a general merchant, and the country code defaults to `KH`.
@@ -108,8 +114,8 @@ The preference is two characters, and the name and city obey the same 25 and
 `99`, and both are optional here.
 
 The official SDK requires an expiry on any QR with an amount, from npm
-`bakong-khqr` v1.0.18 onward. We do not enforce that, because three of the
-four published test vectors carry an amount with no expiry, and rejecting the
+`bakong-khqr` v1.0.18 onward. We do not enforce that, because two of the
+published test vectors carry an amount with no expiry, and rejecting the
 official test data would be worse than being lenient. Set an expiry anyway if
 you are generating for a real checkout. Confirm the exact behaviour against a
 freshly generated QR from the official SDK before you rely on it.
@@ -142,7 +148,7 @@ yourself from the official source if your design calls for it.
 | --- | --- |
 | `MissingField` | Name or city was not set. |
 | `FieldTooLong` | A field is over its limit. Carries the name, the length and the limit. |
-| `InvalidField` | Account ID, amount, category code or country code was rejected. |
+| `InvalidField` | Account ID, amount, category code, country code or language preference was rejected. |
 | `ValueTooLong` | A whole template went past 99 characters. |
 
 The last one is the reason `to_qr_string()` returns a `Result` at all. Each

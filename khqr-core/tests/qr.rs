@@ -47,6 +47,16 @@ mod images {
     }
 
     #[test]
+    fn an_absurd_size_is_refused_rather_than_overflowing() {
+        for size in [65_535, 100_000, u32::MAX] {
+            assert!(
+                to_png(common::INDIVIDUAL_KHR_500, size).is_err(),
+                "size {size} must be refused"
+            );
+        }
+    }
+
+    #[test]
     fn a_zero_size_is_rejected() {
         assert!(to_png(common::INDIVIDUAL_KHR_500, 0).is_err());
     }

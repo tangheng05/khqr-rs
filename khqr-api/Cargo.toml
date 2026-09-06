@@ -11,6 +11,9 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 reqwest = { version = "0.13.3", default-features = false, features = ["json"] }
 serde = { version = "1.0.229", features = ["derive"] }

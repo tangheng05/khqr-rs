@@ -19,6 +19,9 @@ name = "khqr_ffi"
 name = "uniffi-bindgen"
 path = "src/bin/uniffi-bindgen.rs"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 khqr-core = { workspace = true, features = ["image"] }
 uniffi = { version = "0.32.0", features = ["cli"] }

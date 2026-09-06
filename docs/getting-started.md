@@ -7,13 +7,13 @@ payload string, because they all wrap the same Rust codec.
 
 ```toml
 [dependencies]
-khqr-core = { git = "https://github.com/tangheng05/khqr-rs" }
+khqr-core = "0.1"
 ```
 
 Add the `image` feature if you want PNG or SVG output:
 
 ```toml
-khqr-core = { git = "https://github.com/tangheng05/khqr-rs", features = ["image"] }
+khqr-core = { version = "0.1", features = ["image"] }
 ```
 
 ```rust
@@ -35,7 +35,7 @@ Bakong later to ask whether it was paid.
 ## Command line
 
 ```sh
-cargo install --path khqr-cli
+cargo install khqr-cli
 ```
 
 ```sh

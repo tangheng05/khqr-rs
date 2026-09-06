@@ -18,6 +18,18 @@ pub enum ApiError {
         /// The `responseMessage` field.
         message: String,
     },
+    /// A non JSON error response, such as the 403 Bakong returns outside Cambodia.
+    Http {
+        /// The HTTP status code.
+        status: u16,
+    },
+    /// A batch answered with a different number of results than were asked for.
+    BatchMismatch {
+        /// How many were asked about.
+        requested: usize,
+        /// How many came back.
+        returned: usize,
+    },
     /// A successful response arrived without the data it should carry.
     MissingData {
         /// The endpoint that was called.
@@ -43,6 +55,20 @@ impl fmt::Display for ApiError {
                 Some(code) => write!(f, "bakong returned error {code}: {message}"),
                 None => write!(f, "bakong returned an error: {message}"),
             },
+            Self::Http { status } => match status {
+                403 => write!(
+                    f,
+                    "bakong refused with http 403, which usually means the request came from outside cambodia"
+                ),
+                other => write!(f, "bakong returned http {other}"),
+            },
+            Self::BatchMismatch {
+                requested,
+                returned,
+            } => write!(
+                f,
+                "asked about {requested} transactions but {returned} came back, so the results cannot be lined up"
+            ),
             Self::MissingData { endpoint } => {
                 write!(f, "{endpoint} reported success but returned no data")
             }

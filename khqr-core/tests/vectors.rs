@@ -13,9 +13,10 @@ fn vectors_are_well_formed() {
 
         let (body, crc) = qr.split_at(qr.len() - 4);
         assert!(body.ends_with("6304"), "crc tag is not last: {qr}");
+        assert_eq!(crc.len(), 4, "crc is not 4 characters: {crc}");
         assert!(
             crc.bytes()
-                .all(|b| b.is_ascii_digit() || b.is_ascii_uppercase()),
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_lowercase()),
             "crc is not 4 uppercase hex chars: {crc}"
         );
     }

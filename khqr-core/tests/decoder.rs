@@ -2,11 +2,11 @@
 
 mod common;
 
-use khqr_core::{append_crc, decode, Currency, MerchantType, Tlv};
+use khqr_core::{append_crc, decode, verify_crc, Currency, KhqrError, MerchantType, Tlv};
 
 #[test]
 fn the_documented_vector_decodes_field_by_field() {
-    let decoded = decode(common::INDIVIDUAL_USD_FULL).expect("vector must decode");
+    let decoded = decode(common::INDIVIDUAL_WITH_LABELS).expect("vector must decode");
 
     assert_eq!(decoded.merchant_type, MerchantType::Individual);
     assert_eq!(decoded.bakong_account_id, "john_smith@devb");
@@ -158,4 +158,85 @@ fn a_payload_without_an_account_template_is_rejected() {
     ));
 
     assert!(decode(&qr).is_err());
+}
+
+/// Currency 116 appears in its proper place, then 840 is appended and the
+/// checksum recomputed. A last-wins parser charges dollars instead of riel.
+const DUPLICATE_CURRENCY: &str =
+    "00020101021229130009shop@aclb5204599953031165402105802KH5904Shop6010Phnom Penh5303840630447A5";
+
+/// Tag 29 names the victim, tag 30 is appended naming the attacker. A parser
+/// that lets the later template win sends the money to the wrong account.
+const BOTH_ACCOUNT_TAGS: &str = "00020101021129150011victim@aclb30170013attacker@aclb5204599953031165802KH5904Shop6010Phnom Penh63048DE9";
+
+#[test]
+fn a_repeated_tag_is_refused_even_with_a_valid_checksum() {
+    for tampered in [DUPLICATE_CURRENCY, BOTH_ACCOUNT_TAGS] {
+        assert!(
+            verify_crc(tampered),
+            "this test is pointless unless the checksum is valid"
+        );
+
+        match decode(tampered) {
+            Err(KhqrError::DuplicateTag { .. }) => {}
+            other => panic!("a repeated tag must be refused, got {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn the_two_account_tags_are_mutually_exclusive() {
+    assert!(matches!(
+        decode(BOTH_ACCOUNT_TAGS),
+        Err(KhqrError::DuplicateTag { .. })
+    ));
+}
+
+#[test]
+fn a_repeated_unknown_tag_is_still_tolerated() {
+    let qr = append_crc(concat!(
+        "000201",
+        "010211",
+        "29130009shop@aclb",
+        "52045999",
+        "5303116",
+        "5802KH",
+        "5904Shop",
+        "6010Phnom Penh",
+        "8004ONE1",
+        "8004TWO2",
+    ));
+
+    let decoded = decode(&qr).expect("unknown tags are not the decoder's business");
+
+    assert_eq!(decoded.unknown.len(), 2);
+}
+
+#[test]
+fn a_timestamp_must_be_digits() {
+    let qr = append_crc(concat!(
+        "000201",
+        "010211",
+        "29130009shop@aclb",
+        "52045999",
+        "5303116",
+        "5802KH",
+        "5904Shop",
+        "6010Phnom Penh",
+        "991700131739495778722",
+    ));
+    assert!(decode(&qr).is_ok());
+
+    let signed = append_crc(concat!(
+        "000201",
+        "010211",
+        "29130009shop@aclb",
+        "52045999",
+        "5303116",
+        "5802KH",
+        "5904Shop",
+        "6010Phnom Penh",
+        "99170013+173949577872",
+    ));
+    assert!(decode(&signed).is_err());
 }

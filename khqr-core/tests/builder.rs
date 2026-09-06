@@ -1,4 +1,7 @@
 //! Phase 3: the builder must reproduce the published vectors exactly.
+//!
+//! Vectors 1 and 2 only. Vector 3 carries a fractional riel amount the builder
+//! normalises, and vector 4 carries a vendor sub-tag the builder cannot emit.
 
 mod common;
 
@@ -246,4 +249,83 @@ fn the_specification_field_limits_are_enforced() {
             other => panic!("{field} should have been rejected, got {other:?}"),
         }
     }
+}
+
+#[test]
+fn negative_zero_is_not_a_valid_amount() {
+    let result = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .amount(-0.0)
+        .build();
+
+    assert!(result.is_err(), "-0.0 would write an amount of \"-0\"");
+}
+
+#[test]
+fn ties_round_away_from_zero_like_the_reference_sdk() {
+    let cases = [
+        (Currency::Khr, 500.5, "501"),
+        (Currency::Khr, 501.5, "502"),
+        (Currency::Khr, 500.7, "501"),
+        (Currency::Khr, 5000.0, "5000"),
+        (Currency::Usd, 0.125, "0.13"),
+        (Currency::Usd, 0.1, "0.10"),
+        (Currency::Usd, 1.5, "1.50"),
+        (Currency::Usd, 1234.5, "1234.50"),
+        (Currency::Usd, 0.0, "0.00"),
+    ];
+
+    for (currency, amount, written) in cases {
+        let qr = Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .currency(currency)
+            .amount(amount)
+            .build()
+            .expect("fields are valid")
+            .to_qr_string()
+            .expect("payload must serialise");
+
+        let expected = format!("54{:02}{written}", written.len());
+        assert!(qr.contains(&expected), "{amount} should write {written}");
+    }
+}
+
+#[test]
+fn empty_and_control_characters_are_refused() {
+    let base = || {
+        Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+    };
+
+    assert!(base().merchant_name("").build().is_err());
+    assert!(base().merchant_city("").build().is_err());
+    assert!(base().merchant_name("Sh\nop").build().is_err());
+    assert!(base().merchant_city("Phnom\u{0}Penh").build().is_err());
+    assert!(base().bill_number("INV\t1").build().is_err());
+}
+
+#[test]
+fn an_account_id_may_not_carry_spaces_or_control_characters() {
+    for account_id in ["shop@aclb\n", " shop@aclb", "shop@ac lb", "shop@aclb "] {
+        let result = Khqr::individual(account_id)
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .build();
+
+        assert!(result.is_err(), "{account_id:?} should be rejected");
+    }
+}
+
+#[test]
+fn a_language_preference_must_be_two_letters() {
+    let result = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .alternate_language("K1", "Shop", "Phnom Penh")
+        .build();
+
+    assert!(result.is_err());
 }

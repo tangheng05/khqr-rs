@@ -6,14 +6,17 @@ use qrcode::{Color, QrCode};
 
 const BASE64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const QUIET_ZONE: u32 = 4;
+const MAX_SIZE: u32 = 4096;
 
 /// Renders the payload as a PNG at least `size` pixels wide.
 ///
 /// The side is rounded up to a whole number of pixels per module, so the image
 /// stays sharp rather than being resampled.
 pub fn to_png(qr: &str, size: u32) -> Result<Vec<u8>, KhqrError> {
-    if size == 0 {
-        return Err(render("image size must be greater than zero"));
+    if size == 0 || size > MAX_SIZE {
+        return Err(render(format!(
+            "image size must be between 1 and {MAX_SIZE} pixels"
+        )));
     }
 
     let code = encode(qr)?;

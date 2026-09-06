@@ -43,14 +43,15 @@ impl Khqr {
         self.set(|builder| builder.merchant_city(value));
     }
 
-    /// `KHR` or `USD`. Anything else is ignored and riel is kept.
-    pub fn currency(&mut self, value: &str) {
-        let currency = match value.to_ascii_uppercase().as_str() {
-            "USD" | "840" => Currency::Usd,
-            _ => Currency::Khr,
-        };
+    /// `KHR` or `USD`. Anything else throws, rather than quietly billing riel.
+    pub fn currency(&mut self, value: &str) -> Result<(), JsValue> {
+        let currency = parse_currency(value).ok_or_else(|| {
+            JsValue::from_str(&format!("unknown currency {value:?}, expected KHR or USD"))
+        })?;
 
         self.set(|builder| builder.currency(currency));
+
+        Ok(())
     }
 
     /// Setting an amount makes the payload single use.
@@ -135,11 +136,14 @@ impl Khqr {
     }
 
     /// Validates everything and returns the payload string.
-    pub fn build(&mut self) -> Result<String, JsValue> {
+    ///
+    /// The builder is left intact, so a rejected build can be corrected and
+    /// tried again.
+    pub fn build(&self) -> Result<String, JsValue> {
         let builder = self
             .builder
-            .take()
-            .ok_or_else(|| JsValue::from_str("this builder has already been used"))?;
+            .clone()
+            .ok_or_else(|| JsValue::from_str("this builder has no fields"))?;
 
         builder
             .build()
@@ -152,6 +156,14 @@ impl Khqr {
         if let Some(builder) = self.builder.take() {
             self.builder = Some(apply(builder));
         }
+    }
+}
+
+fn parse_currency(value: &str) -> Option<Currency> {
+    match value.to_ascii_uppercase().as_str() {
+        "USD" | "840" => Some(Currency::Usd),
+        "KHR" | "116" => Some(Currency::Khr),
+        _ => None,
     }
 }
 
@@ -346,5 +358,51 @@ impl Decoded {
             .chain(&self.inner.additional_unknown)
             .map(|field| format!("{}={}", field.tag, field.value))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_builder_survives_being_built() {
+        let mut qr = Khqr::individual("shop@aclb");
+        qr.merchant_name("Shop");
+        qr.merchant_city("Phnom Penh");
+
+        let stat = qr.build().expect("fields are valid");
+        qr.amount(5000.0);
+        let dynamic = qr.build().expect("fields are still valid");
+
+        assert!(stat.starts_with("000201010211"));
+        assert!(dynamic.starts_with("000201010212"));
+    }
+
+    #[test]
+    fn currencies_are_recognised_by_name_or_code() {
+        assert_eq!(parse_currency("USD"), Some(Currency::Usd));
+        assert_eq!(parse_currency("usd"), Some(Currency::Usd));
+        assert_eq!(parse_currency("840"), Some(Currency::Usd));
+        assert_eq!(parse_currency("KHR"), Some(Currency::Khr));
+        assert_eq!(parse_currency("116"), Some(Currency::Khr));
+    }
+
+    #[test]
+    fn an_unknown_currency_has_no_fallback() {
+        // These used to silently become riel, billing 2 instead of 1.50.
+        for value in ["US", "usd ", "dollar", "USDT", ""] {
+            assert_eq!(parse_currency(value), None, "{value:?} must not resolve");
+        }
+    }
+
+    #[test]
+    fn decoding_reads_the_published_vector() {
+        let decoded = decode("00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH99170013173949577872263046894")
+            .expect("vector must decode");
+
+        assert_eq!(decoded.merchant_name(), "Jonh Smith");
+        assert_eq!(decoded.transaction_amount().as_deref(), Some("500"));
+        assert_eq!(decoded.merchant_type(), "29");
     }
 }

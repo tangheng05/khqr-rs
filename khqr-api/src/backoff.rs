@@ -26,10 +26,12 @@ impl Backoff {
     }
 
     /// Doubles from `start` up to `ceiling`.
+    ///
+    /// A zero start would poll in a tight loop, so it is raised to a millisecond.
     pub fn with_bounds(start: Duration, ceiling: Duration) -> Self {
         Self {
-            start,
-            ceiling,
+            start: start.max(Duration::from_millis(1)),
+            ceiling: ceiling.max(start),
             attempt: 0,
         }
     }

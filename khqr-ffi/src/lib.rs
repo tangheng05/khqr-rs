@@ -173,6 +173,13 @@ pub fn generate(options: KhqrOptions) -> Result<String, KhqrError> {
     if let Some(amount) = options.amount {
         builder = builder.amount(amount);
     }
+    // Both write sub-tag 01 of the account template, so only one can be set.
+    if options.account_information.is_some() && options.merchant_id.is_some() {
+        return Err(KhqrError::Invalid {
+            message: "account_information and merchant_id share one field, so set only one"
+                .to_string(),
+        });
+    }
     if let Some(value) = &options.account_information {
         builder = builder.account_information(value);
     }
@@ -209,12 +216,23 @@ pub fn generate(options: KhqrOptions) -> Result<String, KhqrError> {
     if let Some(value) = &options.purpose_of_transaction {
         builder = builder.purpose_of_transaction(value);
     }
-    if let (Some(preference), Some(name), Some(city)) = (
+    match (
         &options.language_preference,
         &options.merchant_name_alternate,
         &options.merchant_city_alternate,
     ) {
-        builder = builder.alternate_language(preference, name, city);
+        (Some(preference), Some(name), Some(city)) => {
+            builder = builder.alternate_language(preference, name, city);
+        }
+        (None, None, None) => {}
+        // Dropping a partly filled template silently would lose a merchant's
+        // Khmer name with no sign that anything went wrong.
+        _ => {
+            return Err(KhqrError::Invalid {
+                message: "the alternate language needs preference, name and city together"
+                    .to_string(),
+            })
+        }
     }
     if let Some(millis) = options.created_at_ms {
         builder = builder.created_at_ms(millis);

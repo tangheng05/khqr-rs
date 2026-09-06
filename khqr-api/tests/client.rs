@@ -319,3 +319,149 @@ async fn the_hash_batch_shares_the_fifty_item_limit() {
         Err(ApiError::BatchTooLarge { count: 51, max: 50 })
     ));
 }
+
+#[tokio::test]
+async fn a_server_error_is_not_reported_as_unpaid() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/check_transaction_by_md5",
+        json!({ "responseCode": 2, "responseMessage": "Internal server error", "data": null }),
+    )
+    .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+
+    match client.check_transaction_by_md5("abc").await {
+        Err(ApiError::Bakong { message, .. }) => assert_eq!(message, "Internal server error"),
+        other => panic!("an outage must not look like an unpaid order, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn a_short_batch_response_is_refused() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/check_transaction_by_md5_list",
+        json!({
+            "responseCode": 0,
+            "data": [{ "status": "SUCCESS", "hash": "aaa" }, { "status": "NOT_FOUND" }]
+        }),
+    )
+    .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+    let md5s = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+
+    assert!(matches!(
+        client.check_transaction_by_md5_list(&md5s).await,
+        Err(ApiError::BatchMismatch {
+            requested: 3,
+            returned: 2
+        })
+    ));
+}
+
+#[tokio::test]
+async fn a_paid_item_that_cannot_be_read_is_an_error_not_a_miss() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/check_transaction_by_md5_list",
+        json!({ "responseCode": 0, "data": [{ "status": "SUCCESS", "amount": 1.5 }] }),
+    )
+    .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+    let md5s = vec!["a".to_string()];
+
+    match client.check_transaction_by_md5_list(&md5s).await {
+        Err(ApiError::Bakong { message, .. }) => {
+            assert!(message.contains("could not be read"), "{message}");
+        }
+        other => panic!("a paid order must never read as unpaid, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn an_empty_batch_makes_no_request() {
+    let client = BakongClient::with_base_url("http://127.0.0.1:1", "token");
+
+    assert_eq!(
+        client.check_transaction_by_md5_list(&[]).await.unwrap(),
+        Vec::new()
+    );
+}
+
+#[tokio::test]
+async fn a_401_without_a_json_body_is_still_unauthorized() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/check_transaction_by_md5"))
+        .respond_with(ResponseTemplate::new(401).set_body_string("<html>gateway</html>"))
+        .mount(&server)
+        .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "expired");
+
+    assert!(matches!(
+        client.check_transaction_by_md5("abc").await,
+        Err(ApiError::Unauthorized { .. })
+    ));
+}
+
+#[tokio::test]
+async fn a_geo_block_says_so() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/check_transaction_by_md5"))
+        .respond_with(ResponseTemplate::new(403).set_body_string("blocked"))
+        .mount(&server)
+        .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+    let error = client
+        .check_transaction_by_md5("abc")
+        .await
+        .expect_err("403 is an error");
+
+    assert!(matches!(error, ApiError::Http { status: 403 }));
+    assert!(error.to_string().contains("cambodia"), "{error}");
+}
+
+#[tokio::test]
+async fn a_refused_renewal_is_not_treated_as_a_new_token() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/renew_token",
+        json!({ "responseCode": 1, "responseMessage": "Email not registered", "data": null }),
+    )
+    .await;
+
+    let client =
+        BakongClient::with_base_url(server.uri(), "expired").with_renewal_email("me@shop.test");
+
+    assert!(matches!(
+        client.renew_token().await,
+        Err(ApiError::Unauthorized { .. })
+    ));
+    assert_eq!(client.token(), "expired");
+}
+
+#[tokio::test]
+async fn an_unrecognised_batch_status_is_refused() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/check_transaction_by_md5_list",
+        json!({ "responseCode": 0, "data": [{ "status": "PENDING" }] }),
+    )
+    .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+    let md5s = vec!["a".to_string()];
+
+    assert!(client.check_transaction_by_md5_list(&md5s).await.is_err());
+}

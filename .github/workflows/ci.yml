@@ -21,9 +21,21 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-features
       - run: cargo test --workspace
+      - run: cargo test -p khqr-core
+      - run: cargo test -p khqr-core --no-default-features
+      - run: cargo check -p khqr-api --no-default-features --features native-tls
       - run: |
           cargo build -p khqr-ffi
           cargo run -p khqr-ffi --bin uniffi-bindgen -- generate             --library target/debug/libkhqr_ffi.so --no-format --out-dir target/bindings             --language kotlin --language swift --language python
       - run: rustup target add wasm32-unknown-unknown thumbv7em-none-eabihf
       - run: cargo clippy -p khqr-wasm --target wasm32-unknown-unknown -- -D warnings
       - run: cargo build -p khqr-core --no-default-features --target thumbv7em-none-eabihf
+      - run: cargo package --workspace --exclude khqr-cli --no-verify
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-features --all-targets

@@ -12,7 +12,7 @@ pub struct Args {
     #[arg(long, env = "BAKONG_TOKEN", hide_env_values = true)]
     token: String,
     /// The email the token was registered with, so it can be renewed.
-    #[arg(long, env = "BAKONG_EMAIL")]
+    #[arg(long, env = "BAKONG_EMAIL", hide_env_values = true)]
     email: Option<String>,
     /// Use the sandbox rather than production.
     #[arg(long)]
@@ -42,7 +42,9 @@ async fn poll(args: &Args) -> Result<(), Box<dyn Error>> {
     }
 
     let mut backoff = Backoff::new();
-    let deadline = Instant::now() + Duration::from_secs(args.timeout);
+    let deadline = Instant::now()
+        .checked_add(Duration::from_secs(args.timeout))
+        .ok_or("timeout is too far in the future")?;
 
     loop {
         match client.check_transaction_by_md5(&args.md5).await? {
@@ -65,11 +67,12 @@ async fn poll(args: &Args) -> Result<(), Box<dyn Error>> {
             TxStatus::NotFound => {}
         }
 
-        let delay = backoff.next_delay();
-        if Instant::now() + delay >= deadline {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
             return Err("timed out waiting for payment".into());
         }
 
+        let delay = backoff.next_delay().min(remaining);
         eprintln!("waiting {}s", delay.as_secs());
         tokio::time::sleep(delay).await;
     }
