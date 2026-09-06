@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["khqr-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+repository = "https://github.com/tangheng05/khqr-rs"
+authors = ["Draxler <76139625+tangheng05@users.noreply.github.com>"]
+
+[workspace.dependencies]
+khqr-core = { path = "khqr-core", version = "0.1.0" }

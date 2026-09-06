@@ -1,0 +1,17 @@
+[package]
+name = "khqr-core"
+description = "TLV codec, CRC16 and payload builder for Cambodia's KHQR (Bakong) payment QR standard"
+keywords = ["khqr", "bakong", "emvco", "qr", "cambodia"]
+categories = ["encoding", "no-std"]
+readme = "../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+
+[features]
+default = []
