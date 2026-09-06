@@ -18,7 +18,7 @@ is being written phase by phase. Not on crates.io yet, and the API will change.
 
 | Crate | Purpose | State |
 | --- | --- | --- |
-| `khqr-core` | TLV codec, CRC16, builder, decoder, MD5 | in progress |
+| `khqr-core` | TLV codec, CRC16, builder, decoder, MD5, images | usable |
 | `khqr-api` | Bakong Open API client | planned |
 | `khqr-cli` | `khqr gen`, `decode`, `verify`, `watch` | planned |
 | `khqr-wasm` | browser and Node bindings | planned |
@@ -33,8 +33,10 @@ khqr-rs/
     │   ├── builder.rs  typed payload and its builder
     │   ├── crc.rs      crc-16/ccitt-false, checksum append and verify
     │   ├── decoder.rs  payload in, flattened fields out
+    │   ├── hash.rs     the md5 payment handle
     │   ├── error.rs    one error type for the whole crate
     │   ├── lib.rs
+    │   ├── qr.rs       png and svg rendering, behind a feature
     │   ├── tlv.rs      tag-length-value encode and decode
     │   └── types.rs    currency and merchant type
     └── tests/
@@ -42,6 +44,7 @@ khqr-rs/
         ├── builder.rs
         ├── crc.rs
         ├── decoder.rs
+        ├── qr.rs
         ├── tlv.rs
         └── vectors.rs
 ```
@@ -75,11 +78,25 @@ Tags the crate does not know are kept in `unknown` rather than rejected, since
 production QRs carry vendor extensions. A checksum that does not match is
 always an error.
 
+`md5(&qr)` gives the handle Bakong uses to poll for payment. It works for
+dynamic QRs only, since a static one has no amount to track.
+
+Images live behind the `image` feature, off by default:
+
+```toml
+khqr-core = { version = "0.1", features = ["image"] }
+```
+
+```rust
+let png = khqr_core::to_png(&qr, 512)?;
+let svg = khqr_core::to_svg(&qr)?;
+```
+
 ## Building
 
 ```sh
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo fmt --all --check
 ```
 

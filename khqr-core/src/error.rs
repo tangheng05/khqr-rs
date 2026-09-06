@@ -39,6 +39,11 @@ pub enum KhqrError {
         /// The checksum its contents produce.
         expected: String,
     },
+    /// A QR image could not be produced.
+    Render {
+        /// What went wrong.
+        reason: String,
+    },
     /// A required field was never set.
     MissingField {
         /// Name of the missing field.
@@ -102,6 +107,9 @@ impl fmt::Display for KhqrError {
             }
             Self::ChecksumMismatch { found, expected } => {
                 write!(f, "checksum is {found}, contents produce {expected}")
+            }
+            Self::Render { reason } => {
+                write!(f, "could not render the qr image: {reason}")
             }
             Self::MissingField { field } => {
                 write!(f, "{field} is required")

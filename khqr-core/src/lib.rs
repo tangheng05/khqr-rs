@@ -9,6 +9,9 @@ mod builder;
 mod crc;
 mod decoder;
 mod error;
+mod hash;
+#[cfg(feature = "image")]
+mod qr;
 mod tlv;
 mod types;
 
@@ -16,5 +19,8 @@ pub use builder::{Khqr, KhqrBuilder};
 pub use crc::{append_crc, crc16_ccitt_false, verify_crc};
 pub use decoder::{decode, DecodedKhqr};
 pub use error::KhqrError;
+pub use hash::md5;
+#[cfg(feature = "image")]
+pub use qr::{to_base64_uri, to_png, to_svg};
 pub use tlv::{format_tlv, parse_tlv, Tlv};
 pub use types::{Currency, MerchantType};
