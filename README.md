@@ -1,9 +1,9 @@
 # khqr-rs
 
 [![CI](https://github.com/tangheng05/khqr-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/tangheng05/khqr-rs/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/khqr-core.svg?cacheSeconds=3600)](https://crates.io/crates/khqr-core)
-[![docs.rs](https://img.shields.io/docsrs/khqr-core?cacheSeconds=3600)](https://docs.rs/khqr-core)
-[![license](https://img.shields.io/crates/l/khqr-core.svg?cacheSeconds=86400)](https://github.com/tangheng05/khqr-rs/blob/main/LICENSE)
+[![crates.io](https://img.shields.io/crates/v/khqr-core.svg)](https://crates.io/crates/khqr-core)
+[![docs.rs](https://img.shields.io/docsrs/khqr-core)](https://docs.rs/khqr-core)
+[![license](https://img.shields.io/crates/l/khqr-core.svg)](https://github.com/tangheng05/khqr-rs/blob/main/LICENSE)
 [![msrv](https://img.shields.io/badge/msrv-1.88-blue.svg)](https://releases.rs/docs/1.88.0/)
 
 A Rust implementation of KHQR, the payment QR standard used by Bakong in Cambodia.
