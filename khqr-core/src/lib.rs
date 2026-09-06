@@ -18,8 +18,10 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod crc;
 mod error;
 mod tlv;
 
+pub use crc::{append_crc, crc16_ccitt_false, verify_crc};
 pub use error::KhqrError;
 pub use tlv::{format_tlv, parse_tlv, Tlv};
