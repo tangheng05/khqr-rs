@@ -180,18 +180,21 @@ pub fn md5(qr: &str) -> String {
 }
 
 /// Renders the payload as an SVG.
+#[cfg(feature = "image")]
 #[wasm_bindgen(js_name = toSvg)]
 pub fn to_svg(qr: &str) -> Result<String, JsValue> {
     khqr_core::to_svg(qr).map_err(to_js)
 }
 
 /// Renders the payload as PNG bytes, at least `size` pixels wide.
+#[cfg(feature = "image")]
 #[wasm_bindgen(js_name = toPng)]
 pub fn to_png(qr: &str, size: u32) -> Result<Vec<u8>, JsValue> {
     khqr_core::to_png(qr, size).map_err(to_js)
 }
 
 /// Renders the payload as a PNG data URI, ready for an `img` tag.
+#[cfg(feature = "image")]
 #[wasm_bindgen(js_name = toDataUri)]
 pub fn to_data_uri(qr: &str, size: u32) -> Result<String, JsValue> {
     khqr_core::to_base64_uri(qr, size).map_err(to_js)

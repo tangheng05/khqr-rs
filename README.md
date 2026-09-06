@@ -160,6 +160,13 @@ side with no server round trip.
 wasm-pack build khqr-wasm --target web
 ```
 
+Rendering is on by default and costs most of the bundle: 260KB with it, 113KB
+without. Turn it off if you already draw the QR with a JS library.
+
+```sh
+wasm-pack build khqr-wasm --target web -- --no-default-features
+```
+
 ```js
 import init, { Khqr, toDataUri } from "./pkg/khqr_wasm.js";
 

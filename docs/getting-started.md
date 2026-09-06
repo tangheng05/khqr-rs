@@ -61,6 +61,13 @@ any parsing.
 wasm-pack build khqr-wasm --target web
 ```
 
+The PNG and SVG renderers account for more than half the bundle, 260KB against
+113KB. If your page already draws QR codes with a JS library, leave them out:
+
+```sh
+wasm-pack build khqr-wasm --target web -- --no-default-features
+```
+
 ```js
 import init, { Khqr, toDataUri, md5 } from "./pkg/khqr_wasm.js";
 

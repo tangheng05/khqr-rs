@@ -7,6 +7,9 @@ minor version is where breaking changes land, so pin an exact version.
 
 ### Added
 
+- `khqr-wasm` has an `image` feature, on by default. Turning it off drops the
+  PNG and SVG renderers and takes the bundle from 260KB to 113KB, which suits a
+  page that already draws QR codes in JavaScript.
 - A browser test for `khqr-wasm` under `khqr-wasm/tests/browser`. The Rust
   unit tests run on the host, where `JsValue` cannot exist, so the bindings had
   never been exercised as a browser sees them. The page runs the real wasm in a
