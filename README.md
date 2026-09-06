@@ -30,8 +30,26 @@ khqr-rs/
 ├── Cargo.toml          workspace manifest
 └── khqr-core/
     ├── src/
+    │   ├── error.rs    one error type for the whole crate
+    │   ├── lib.rs
+    │   └── tlv.rs      tag-length-value encode and decode
     └── tests/
-        └── fixtures.rs published KHQR payloads used as reference vectors
+        ├── common/     published KHQR payloads used as reference vectors
+        ├── tlv.rs
+        └── vectors.rs
+```
+
+## Usage
+
+The codec is the only part that exists so far. Reading a payload gives you its
+fields; a template tag's value is another run of fields.
+
+```rust
+use khqr_core::parse_tlv;
+
+let fields = parse_tlv("0002010102115802KH")?;
+assert_eq!(fields[2].tag, "58");
+assert_eq!(fields[2].value, "KH");
 ```
 
 ## Building
