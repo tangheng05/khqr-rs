@@ -113,16 +113,12 @@ The preference is two characters, and the name and city obey the same 25 and
 
 ## Timestamps
 
-`created_at_ms` and `expires_at_ms` are epoch milliseconds. Both go in tag
-`99`, and both are optional here. When both are set, an expiry earlier than
-the creation time is rejected, as the official SDK does.
+`created_at_ms` and `expires_at_ms` are epoch milliseconds, 13 digits, and
+both go in tag `99`.
 
-The official SDK requires an expiry on any QR with an amount, from npm
-`bakong-khqr` v1.0.18 onward. We do not enforce that, because two of the
-published test vectors carry an amount with no expiry, and rejecting the
-official test data would be worse than being lenient. Set an expiry anyway if
-you are generating for a real checkout. Confirm the exact behaviour against a
-freshly generated QR from the official SDK before you rely on it.
+A QR with an amount must have an expiry, as in the official SDK, which rejects
+a dynamic QR without one. The expiry must be exactly 13 digits and not earlier
+than the creation time. A static QR needs neither.
 
 ## Images
 
@@ -170,9 +166,9 @@ yourself from the official source if your design calls for it.
 
 | Variant | Means |
 | --- | --- |
-| `MissingField` | Name or city was not set. |
+| `MissingField` | Name or city was not set, or a QR with an amount has no expiry. |
 | `FieldTooLong` | A field is over its limit. Carries the name, the length and the limit. |
-| `InvalidField` | Account ID, amount, category code, country code or language preference was rejected. |
+| `InvalidField` | Account ID, amount, expiry, category code, country code or language preference was rejected. |
 | `ValueTooLong` | A whole template went past 99 characters. |
 
 The last one is the reason `to_qr_string()` returns a `Result` at all. Each

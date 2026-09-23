@@ -11,6 +11,10 @@ fn the_published_handles_are_reproduced() {
         common::INDIVIDUAL_KHR_500_MD5
     );
     assert_eq!(md5(common::MERCHANT_KHR), common::MERCHANT_KHR_MD5);
+    assert_eq!(
+        md5(common::INDIVIDUAL_KHR_500_EXPIRING),
+        common::INDIVIDUAL_KHR_500_EXPIRING_MD5
+    );
 }
 
 #[test]

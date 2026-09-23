@@ -1,6 +1,6 @@
 use crate::{crc16_ccitt_false, parse_tlv, verify_crc, Currency, KhqrError, MerchantType, Tlv};
 use alloc::format;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 const ADDITIONAL_TAGS: [&str; 6] = ["01", "02", "03", "05", "07", "08"];
@@ -76,6 +76,33 @@ impl DecodedKhqr {
     /// A payload without an expiry never expires.
     pub fn is_expired(&self, now_ms: u64) -> bool {
         self.expires_at_ms.is_some_and(|expires| expires < now_ms)
+    }
+
+    /// The official SDK's `verify` rules for single use QRs.
+    pub fn check_dynamic(&self, now_ms: u64) -> Result<(), KhqrError> {
+        if self.point_of_initiation_method != "12" && !self.is_dynamic() {
+            return Ok(());
+        }
+        if !self.is_dynamic() {
+            return Err(missing("transaction amount"));
+        }
+
+        let expires = self
+            .expires_at_ms
+            .ok_or_else(|| missing("expiration timestamp"))?;
+        if expires.to_string().len() != 13 {
+            return Err(KhqrError::InvalidField {
+                field: "expiration timestamp",
+                value: expires.to_string(),
+            });
+        }
+        if self.is_expired(now_ms) {
+            return Err(KhqrError::Expired {
+                expires_at_ms: expires,
+            });
+        }
+
+        Ok(())
     }
 }
 

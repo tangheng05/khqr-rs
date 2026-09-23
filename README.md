@@ -86,12 +86,14 @@ let qr = Khqr::individual("jonhsmith@nbcq")
     .merchant_name("Jonh Smith")
     .merchant_city("Phnom Penh")
     .amount(500.0)
+    .expires_at_ms(now_ms + 300_000)
     .build()?
     .to_qr_string()?;
 ```
 
 Riel is the default currency and gets no decimal places; dollars get two. An
-amount makes the QR single use, so tag `01` becomes `12` on its own.
+amount makes the QR single use, so tag `01` becomes `12` on its own, and
+needs an expiry: the official SDK rejects a dynamic QR without one.
 
 Field limits come from the reference SDK: 32 characters for account identifiers, 25 for
 labels, 15 for the city, 13 for the amount. Tag `15`, the UnionPay merchant account, is
@@ -156,12 +158,12 @@ cargo install khqr-cli
 khqr gen --account shop@aclb --name "Coffee Klaing" --city "Phnom Penh" \
     --amount 5000 --expires-in 300 --png qr.png
 khqr decode "0002010102..."
-khqr verify "0002010102..."          # exits non zero if it does not decode
+khqr verify "0002010102..."          # exits non zero if it fails the official checks
 BAKONG_TOKEN=... khqr watch --md5 682f33ec80e311d909f91d70a70ab436
 ```
 
 `gen` prints the payload and its MD5 handle, then writes the images you asked
-for. `watch` polls with the same backoff the library uses and gives up after
+for. With an amount and no `--expires-in`, the QR expires after five minutes. `watch` polls with the same backoff the library uses and gives up after
 five minutes by default.
 
 ## Browser and Node
@@ -182,6 +184,7 @@ const qr = Khqr.individual("shop@aclb");
 qr.merchantName("Coffee Klaing");
 qr.merchantCity("Phnom Penh");
 qr.amount(5000);
+qr.expiresAtMs(Date.now() + 300_000);
 
 document.querySelector("img").src = toDataUri(qr.build(), 512);
 ```
@@ -211,6 +214,7 @@ cargo run -p khqr-ffi --features cli --bin uniffi-bindgen -- generate \
 On macOS that library is `libkhqr_ffi.dylib`, and on Windows `khqr_ffi.dll`.
 
 ```python
+import time
 import khqr_ffi as khqr
 
 qr = khqr.generate(khqr.KhqrOptions(
@@ -219,6 +223,7 @@ qr = khqr.generate(khqr.KhqrOptions(
     merchant_name="Coffee Klaing",
     merchant_city="Phnom Penh",
     amount=5000.0,
+    expires_at_ms=int(time.time() * 1000) + 300_000,
 ))
 handle = khqr.md5(qr)
 ```

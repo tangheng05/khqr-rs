@@ -88,7 +88,7 @@ pub fn verify(qr: &str) -> Result<(), Box<dyn Error>> {
         return Err("checksum does not match".into());
     }
 
-    decode_payload(qr)?;
+    decode_payload(qr)?.check_dynamic(crate::gen::now_ms()?)?;
     println!("ok");
 
     Ok(())

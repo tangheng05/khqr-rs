@@ -8,6 +8,7 @@ mod common;
 use khqr_core::{verify_crc, Currency, Khqr, KhqrBuilder, KhqrError, MerchantType};
 
 const CREATED_AT: u64 = 1_739_495_778_722;
+const EXPIRES_AT: u64 = CREATED_AT + 300_000;
 
 #[test]
 fn the_individual_vector_is_rebuilt() {
@@ -16,12 +17,13 @@ fn the_individual_vector_is_rebuilt() {
         .merchant_city("PHNOM PENH")
         .amount(500.0)
         .created_at_ms(CREATED_AT)
+        .expires_at_ms(EXPIRES_AT)
         .build()
         .expect("vector fields are valid")
         .to_qr_string()
         .expect("vector must serialise");
 
-    assert_eq!(qr, common::INDIVIDUAL_KHR_500);
+    assert_eq!(qr, common::INDIVIDUAL_KHR_500_EXPIRING);
 }
 
 #[test]
@@ -47,6 +49,7 @@ fn an_amount_makes_the_payload_dynamic() {
         .merchant_name("Shop")
         .merchant_city("Phnom Penh")
         .amount(1.0)
+        .expires_at_ms(EXPIRES_AT)
         .build()
         .expect("fields are valid");
 
@@ -72,6 +75,7 @@ fn built_payloads_carry_a_valid_checksum() {
         .merchant_city("Phnom Penh")
         .currency(Currency::Usd)
         .amount(0.1)
+        .expires_at_ms(EXPIRES_AT)
         .build()
         .expect("fields are valid")
         .to_qr_string()
@@ -183,6 +187,7 @@ fn a_negative_amount_is_rejected() {
         .merchant_name("Shop")
         .merchant_city("Phnom Penh")
         .amount(-1.0)
+        .expires_at_ms(EXPIRES_AT)
         .build();
 
     assert!(result.is_err());
@@ -257,6 +262,7 @@ fn negative_zero_is_not_a_valid_amount() {
         .merchant_name("Shop")
         .merchant_city("Phnom Penh")
         .amount(-0.0)
+        .expires_at_ms(EXPIRES_AT)
         .build();
 
     assert!(result.is_err(), "-0.0 would write an amount of \"-0\"");
@@ -281,6 +287,7 @@ fn ties_round_away_from_zero_like_the_reference_sdk() {
             .merchant_city("Phnom Penh")
             .currency(currency)
             .amount(amount)
+            .expires_at_ms(EXPIRES_AT)
             .build()
             .expect("fields are valid")
             .to_qr_string()
@@ -351,6 +358,7 @@ fn rounding_matches_the_reference_sdk_on_near_ties() {
             .merchant_city("Phnom Penh")
             .currency(Currency::Usd)
             .amount(amount)
+            .expires_at_ms(EXPIRES_AT)
             .build()
             .expect("fields are valid")
             .to_qr_string()
@@ -369,6 +377,7 @@ fn an_amount_that_rounds_to_nothing_is_refused() {
             .merchant_city("Phnom Penh")
             .currency(Currency::Usd)
             .amount(amount)
+            .expires_at_ms(EXPIRES_AT)
             .build();
 
         assert!(result.is_err(), "{amount} would write a QR nobody can pay");
@@ -431,6 +440,7 @@ fn an_expiry_before_the_creation_time_is_rejected() {
             .merchant_name("Shop")
             .merchant_city("Phnom Penh")
             .amount(500.0)
+            .expires_at_ms(EXPIRES_AT)
             .created_at_ms(CREATED_AT)
     };
 
@@ -442,4 +452,38 @@ fn an_expiry_before_the_creation_time_is_rejected() {
         })
     ));
     assert!(base().expires_at_ms(CREATED_AT).build().is_ok());
+}
+
+#[test]
+fn an_amount_needs_an_expiry() {
+    let result = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .amount(500.0)
+        .build();
+
+    assert_eq!(
+        result.unwrap_err(),
+        KhqrError::MissingField {
+            field: "expiration timestamp"
+        }
+    );
+}
+
+#[test]
+fn an_expiry_must_be_thirteen_digits() {
+    let result = Khqr::individual("shop@aclb")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .amount(500.0)
+        .expires_at_ms(999_999_999_999)
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(KhqrError::InvalidField {
+            field: "expiration timestamp",
+            ..
+        })
+    ));
 }

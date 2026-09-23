@@ -74,6 +74,11 @@ this library knows, and `None` otherwise.
 pass in, since the library has no clock. A payload with no expiry never
 expires.
 
+`decode` stays lenient, like the official SDK's own `decode`. To apply the
+official `verify` rules for a single use QR, call
+`decoded.check_dynamic(now_ms)`: it needs an amount, a 13 digit expiry, and
+fails with `Expired` once that time has passed. A static QR always passes.
+
 ## Just checking the checksum
 
 `verify_crc` is cheaper than a full decode and does not allocate a struct:
@@ -123,6 +128,7 @@ byte character.
 | `InvalidTag`, `InvalidLength` | A tag or length was not two digits. |
 | `DuplicateTag` | A tag appeared twice. Leniency covers tags we do not know, not repeats of ones we do, because a repeat lets someone append a field and recompute the checksum. |
 | `InvalidField` | A timestamp that was not digits. |
+| `Expired` | From `check_dynamic`, a single use QR past its expiry. |
 
 `KhqrError` is `#[non_exhaustive]`, so a `match` on it needs a wildcard arm.
 

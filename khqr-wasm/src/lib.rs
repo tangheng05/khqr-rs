@@ -352,6 +352,17 @@ impl Decoded {
         self.inner.is_dynamic()
     }
 
+    #[wasm_bindgen(js_name = isExpired)]
+    pub fn is_expired(&self, now_ms: f64) -> bool {
+        self.inner.is_expired(now_ms as u64)
+    }
+
+    /// The official SDK's `verify` rules for single use QRs, at `nowMs`.
+    #[wasm_bindgen(js_name = checkDynamic)]
+    pub fn check_dynamic(&self, now_ms: f64) -> Result<(), JsValue> {
+        self.inner.check_dynamic(now_ms as u64).map_err(to_js)
+    }
+
     /// Tags this library does not recognise, as `tag=value` strings.
     #[wasm_bindgen(getter, js_name = unknownTags)]
     pub fn unknown_tags(&self) -> Vec<String> {
@@ -376,6 +387,7 @@ mod tests {
 
         let stat = qr.build().expect("fields are valid");
         qr.amount(5000.0);
+        qr.expires_at_ms(1_739_496_078_722.0);
         let dynamic = qr.build().expect("fields are still valid");
 
         assert!(stat.starts_with("000201010211"));

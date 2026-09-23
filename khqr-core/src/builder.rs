@@ -8,7 +8,7 @@ const MAX_CITY: usize = 15;
 const MAX_AMOUNT: usize = 13;
 const MAX_ACCOUNT: usize = 32;
 const MAX_LABEL: usize = 25;
-const MAX_TIMESTAMP: usize = 13;
+const TIMESTAMP_DIGITS: usize = 13;
 const MAX_UNION_PAY: usize = 99;
 const MAX_SCALED_AMOUNT: f64 = 1e15;
 const DEFAULT_CATEGORY_CODE: &str = "5999";
@@ -255,7 +255,8 @@ impl KhqrBuilder {
         self
     }
 
-    /// Transaction amount. Setting one makes the payload single use.
+    /// Transaction amount. Setting one makes the payload single use and
+    /// requires an expiry.
     pub fn amount(mut self, amount: f64) -> Self {
         self.amount = Some(amount);
         self
@@ -336,7 +337,7 @@ impl KhqrBuilder {
         self
     }
 
-    /// Expiry time in epoch milliseconds, tag `99` sub-tag `01`.
+    /// Expiry time in epoch milliseconds, 13 digits, tag `99` sub-tag `01`.
     pub fn expires_at_ms(mut self, millis: u64) -> Self {
         self.expires_at_ms = Some(millis);
         self
@@ -376,13 +377,18 @@ impl KhqrBuilder {
             (self.expires_at_ms, "expiration timestamp"),
         ] {
             if let Some(millis) = millis {
-                capped(&millis.to_string(), field, MAX_TIMESTAMP)?;
+                capped(&millis.to_string(), field, TIMESTAMP_DIGITS)?;
             }
         }
-        if let (Some(created), Some(expires)) = (self.created_at_ms, self.expires_at_ms) {
-            if expires < created {
-                return Err(invalid("expiration timestamp", &expires.to_string()));
+        match self.expires_at_ms {
+            Some(expires) => {
+                let too_short = expires.to_string().len() != TIMESTAMP_DIGITS;
+                if too_short || self.created_at_ms.is_some_and(|created| expires < created) {
+                    return Err(invalid("expiration timestamp", &expires.to_string()));
+                }
             }
+            None if self.amount.is_some() => return Err(missing("expiration timestamp")),
+            None => {}
         }
 
         let merchant_name = required(self.merchant_name, "merchant name")?;
@@ -456,8 +462,12 @@ fn invalid(field: &'static str, value: &str) -> KhqrError {
     }
 }
 
+fn missing(field: &'static str) -> KhqrError {
+    KhqrError::MissingField { field }
+}
+
 fn required(value: Option<String>, field: &'static str) -> Result<String, KhqrError> {
-    value.ok_or(KhqrError::MissingField { field })
+    value.ok_or(missing(field))
 }
 
 fn capped(value: &str, field: &'static str, max: usize) -> Result<(), KhqrError> {

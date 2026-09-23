@@ -3,6 +3,7 @@
 use std::process::{Command, Output};
 
 const VECTOR: &str = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH99170013173949577872263046894";
+const STATIC_VECTOR: &str = "00020101021130400014jonhsmith@nbcq01061234560208Dev Bank5204599953031165802KH5910Jonh Smith6009Siem Reap6215021185512345678991700131739495778722630433E1";
 
 fn khqr(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_khqr"))
@@ -69,7 +70,7 @@ fn decoding_prints_the_published_fields() {
 
 #[test]
 fn verifying_a_good_payload_succeeds() {
-    let output = khqr(&["verify", VECTOR]);
+    let output = khqr(&["verify", STATIC_VECTOR]);
 
     assert!(output.status.success());
     assert_eq!(stdout(&output).trim(), "ok");
@@ -131,4 +132,11 @@ fn an_absurd_timeout_is_refused_rather_than_panicking() {
 
     assert!(!output.status.success());
     assert_eq!(output.status.code(), Some(1), "it must not panic");
+}
+
+#[test]
+fn verifying_a_dynamic_payload_without_an_expiry_fails() {
+    let output = khqr(&["verify", VECTOR]);
+
+    assert!(!output.status.success());
 }

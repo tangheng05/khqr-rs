@@ -1,10 +1,12 @@
 //! Phase 7: the shapes crossing the FFI boundary.
 
 use khqr_ffi::{
-    decode, generate, md5, to_png, verify, Currency, KhqrError, KhqrOptions, MerchantType,
+    check_dynamic, decode, generate, md5, to_png, verify, Currency, KhqrError, KhqrOptions,
+    MerchantType,
 };
 
-const VECTOR: &str = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH99170013173949577872263046894";
+const VECTOR: &str = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH9934001317394957787220113173949607872263041A6F";
+const EXPIRES_AT: u64 = 1_739_496_078_722;
 
 fn options(merchant_type: MerchantType, account_id: &str) -> KhqrOptions {
     KhqrOptions {
@@ -39,12 +41,13 @@ fn the_published_vector_is_rebuilt_across_the_boundary() {
     let built = generate(KhqrOptions {
         amount: Some(500.0),
         created_at_ms: Some(1_739_495_778_722),
+        expires_at_ms: Some(EXPIRES_AT),
         ..options(MerchantType::Individual, "jonhsmith@nbcq")
     })
     .expect("vector fields are valid");
 
     assert_eq!(built, VECTOR);
-    assert_eq!(md5(built), "b1c250304b8594e4c6b53dd44791b57a");
+    assert_eq!(md5(built), "04fc046ed7270fde99c4bbd1ec63cd5b");
 }
 
 #[test]
@@ -52,6 +55,7 @@ fn a_dollar_amount_keeps_its_decimals() {
     let built = generate(KhqrOptions {
         currency: Some(Currency::Usd),
         amount: Some(0.1),
+        expires_at_ms: Some(EXPIRES_AT),
         ..options(MerchantType::Merchant, "shop@aclb")
     })
     .expect("fields are valid");
@@ -140,4 +144,10 @@ fn a_complete_alternate_language_is_written() {
         decode(qr).expect("decodes").language_preference.as_deref(),
         Some("KM")
     );
+}
+
+#[test]
+fn dynamic_checks_cross_the_boundary() {
+    assert!(check_dynamic(VECTOR.to_string(), EXPIRES_AT).is_ok());
+    assert!(check_dynamic(VECTOR.to_string(), EXPIRES_AT + 1).is_err());
 }

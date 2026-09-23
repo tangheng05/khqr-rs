@@ -310,3 +310,58 @@ fn a_payload_without_an_expiry_never_expires() {
 
     assert!(!decoded.is_expired(u64::MAX));
 }
+
+#[test]
+fn a_fresh_dynamic_qr_passes_the_official_checks_until_it_expires() {
+    let decoded = decode(common::INDIVIDUAL_KHR_500_EXPIRING).expect("vector must decode");
+
+    assert_eq!(decoded.check_dynamic(1_739_496_078_722), Ok(()));
+    assert_eq!(
+        decoded.check_dynamic(1_739_496_078_723),
+        Err(KhqrError::Expired {
+            expires_at_ms: 1_739_496_078_722
+        })
+    );
+}
+
+#[test]
+fn a_dynamic_qr_without_an_expiry_fails_the_official_checks() {
+    let decoded = decode(common::INDIVIDUAL_KHR_500).expect("vector must decode");
+
+    assert_eq!(
+        decoded.check_dynamic(0),
+        Err(KhqrError::MissingField {
+            field: "expiration timestamp"
+        })
+    );
+}
+
+#[test]
+fn a_static_qr_has_nothing_to_check() {
+    let decoded = decode(common::MERCHANT_KHR).expect("vector must decode");
+
+    assert_eq!(decoded.check_dynamic(u64::MAX), Ok(()));
+}
+
+#[test]
+fn a_dynamic_marker_without_an_amount_fails_the_official_checks() {
+    let qr = append_crc(concat!(
+        "000201",
+        "010212",
+        "29130009shop@aclb",
+        "52045999",
+        "5303116",
+        "5802KH",
+        "5904Shop",
+        "6010Phnom Penh",
+    ));
+
+    let decoded = decode(&qr).expect("payload must decode");
+
+    assert_eq!(
+        decoded.check_dynamic(0),
+        Err(KhqrError::MissingField {
+            field: "transaction amount"
+        })
+    );
+}

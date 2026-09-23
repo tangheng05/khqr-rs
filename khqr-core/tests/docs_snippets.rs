@@ -10,6 +10,7 @@ fn getting_started_snippet() -> Result<(), KhqrError> {
         .merchant_name("Coffee Klaing")
         .merchant_city("Phnom Penh")
         .amount(5000.0)
+        .expires_at_ms(1_739_496_078_722)
         .build()?
         .to_qr_string()?;
 
@@ -57,6 +58,7 @@ fn amount_formatting_table() -> Result<(), KhqrError> {
             .merchant_city("Phnom Penh")
             .currency(currency)
             .amount(amount)
+            .expires_at_ms(1_739_496_078_722)
             .build()?
             .to_qr_string()?;
 

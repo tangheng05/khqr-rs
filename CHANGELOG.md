@@ -7,14 +7,24 @@ Pin `"=0.2.0"` if you would rather review each change.
 
 ## Unreleased
 
+### Breaking
+
+- A QR with an amount needs an expiry, exactly 13 digits, as in the official
+  SDK, whose `verify` rejects dynamic QRs without one. `khqr gen` defaults to
+  five minutes when given an amount.
+
 ### Added
 
-- `DecodedKhqr::is_expired(now_ms)`.
+- `DecodedKhqr::is_expired(now_ms)` and `DecodedKhqr::check_dynamic(now_ms)`,
+  which applies the official `verify` rules to a single use QR.
+- `KhqrError::Expired`.
+- `checkDynamic` and `isExpired` in `khqr-wasm`, `check_dynamic` in `khqr-ffi`.
 
 ### Changed
 
 - The builder rejects UnionPay on a dollar QR and an expiry before the
   creation time, matching the official SDK.
+- `khqr verify` also fails a dynamic QR with no expiry or one that has expired.
 
 ## 0.2.0
 

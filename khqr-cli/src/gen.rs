@@ -6,6 +6,8 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const DEFAULT_EXPIRES_IN: u64 = 300;
+
 #[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
 pub enum EccArg {
     Low,
@@ -74,7 +76,7 @@ pub struct Args {
     /// Merchant category code.
     #[arg(long)]
     mcc: Option<String>,
-    /// Seconds until the QR expires.
+    /// Seconds until the QR expires. Defaults to 300 when an amount is set.
     #[arg(long)]
     expires_in: Option<u64>,
     /// Write a PNG here.
@@ -111,7 +113,7 @@ pub fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     if let Some(amount) = args.amount {
         builder = builder.amount(amount);
     }
-    if let Some(seconds) = args.expires_in {
+    if let Some(seconds) = args.expires_in.or(args.amount.map(|_| DEFAULT_EXPIRES_IN)) {
         let expires_at = seconds
             .checked_mul(1_000)
             .and_then(|millis| created_at.checked_add(millis))
@@ -170,7 +172,7 @@ fn optional(mut builder: KhqrBuilder, args: &Args) -> KhqrBuilder {
     builder
 }
 
-fn now_ms() -> Result<u64, Box<dyn Error>> {
+pub fn now_ms() -> Result<u64, Box<dyn Error>> {
     let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
 
     Ok(u64::try_from(millis)?)

@@ -17,7 +17,7 @@
 <script type="module">
 import init, { Khqr, decode, verify, md5, toSvg, toPng, toDataUri } from "./pkg/khqr_wasm.js";
 
-const VECTOR = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH99170013173949577872263046894";
+const VECTOR = "00020101021229180014jonhsmith@nbcq52045999530311654035005802KH5910Jonh Smith6010PHNOM PENH9934001317394957787220113173949607872263041A6F";
 const out = document.getElementById("out");
 let pass = 0, fail = 0;
 
@@ -43,8 +43,9 @@ try {
   b.merchantCity("PHNOM PENH");
   b.amount(500);
   b.createdAtMs(1739495778722);
+  b.expiresAtMs(1739496078722);
   check("rebuilds published vector 1", b.build(), VECTOR);
-  check("md5 matches published handle", md5(VECTOR), "b1c250304b8594e4c6b53dd44791b57a");
+  check("md5 matches published handle", md5(VECTOR), "04fc046ed7270fde99c4bbd1ec63cd5b");
   check("verify accepts the vector", verify(VECTOR), true);
   check("verify rejects a tampered vector", verify(VECTOR.replace("5802KH", "5802KM")), false);
 
@@ -59,13 +60,19 @@ try {
   check("decoded transactionAmount", d.transactionAmount, "500");
   check("decoded merchantType", d.merchantType, "29");
   check("decoded isDynamic", d.isDynamic, true);
-  check("decoded crc", d.crc, "6894");
+  check("decoded crc", d.crc, "1A6F");
+  check("checkDynamic passes before expiry", d.checkDynamic(1739496078722), undefined);
+  check("isExpired after expiry", d.isExpired(1739496078723), true);
+  checkThrows("checkDynamic throws after expiry", () => { d.checkDynamic(1739496078723); });
 
   // currency must not silently fall back to riel
   const c = Khqr.merchant("shop@aclb");
   c.merchantName("Shop"); c.merchantCity("Phnom Penh");
-  c.currency("USD"); c.amount(1.5);
+  c.currency("USD"); c.amount(1.5); c.expiresAtMs(1739496078722);
   check("usd writes two decimals", c.build().includes("54041.50"), true);
+  checkThrows("amount without expiry throws", () => {
+    const x = Khqr.individual("shop@aclb"); x.merchantName("S"); x.merchantCity("P"); x.amount(1); x.build();
+  });
   checkThrows("unknown currency throws", () => { c.currency("dollar"); });
   checkThrows("bad account id throws", () => {
     const x = Khqr.individual("no-bank"); x.merchantName("S"); x.merchantCity("P"); x.build();

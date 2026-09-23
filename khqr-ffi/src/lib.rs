@@ -290,6 +290,12 @@ pub fn decode(qr: String) -> Result<Decoded, KhqrError> {
     })
 }
 
+/// The official SDK's `verify` rules for single use QRs, at `now_ms`.
+#[uniffi::export]
+pub fn check_dynamic(qr: String, now_ms: u64) -> Result<(), KhqrError> {
+    Ok(khqr_core::decode(&qr)?.check_dynamic(now_ms)?)
+}
+
 /// Whether the payload's checksum matches its contents.
 #[uniffi::export]
 pub fn verify(qr: String) -> bool {

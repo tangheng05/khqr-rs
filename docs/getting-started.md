@@ -23,6 +23,7 @@ let qr = Khqr::individual("shop@aclb")
     .merchant_name("Coffee Klaing")
     .merchant_city("Phnom Penh")
     .amount(5000.0)
+    .expires_at_ms(now_ms + 300_000)
     .build()?
     .to_qr_string()?;
 
@@ -55,8 +56,9 @@ png qr.png
 ```
 
 `khqr decode <payload>` prints every field. `khqr verify <payload>` exits
-non zero if the checksum is wrong, so it drops into a shell script without
-any parsing.
+non zero if the checksum is wrong, or if a dynamic QR has no expiry or has
+expired, so it drops into a shell script without any parsing. With an amount
+and no `--expires-in`, `gen` sets a five minute expiry.
 
 ## Browser and Node
 
@@ -73,6 +75,7 @@ const builder = Khqr.individual("shop@aclb");
 builder.merchantName("Coffee Klaing");
 builder.merchantCity("Phnom Penh");
 builder.amount(5000);
+builder.expiresAtMs(Date.now() + 300_000);
 
 const qr = builder.build();
 document.querySelector("img").src = toDataUri(qr, 512);
@@ -110,6 +113,7 @@ cargo run -p khqr-ffi --features cli --bin uniffi-bindgen -- generate \
 On macOS the library is `libkhqr_ffi.dylib`, and on Windows `khqr_ffi.dll`.
 
 ```python
+import time
 import khqr_ffi as khqr
 
 qr = khqr.generate(khqr.KhqrOptions(
@@ -118,6 +122,7 @@ qr = khqr.generate(khqr.KhqrOptions(
     merchant_name="Coffee Klaing",
     merchant_city="Phnom Penh",
     amount=5000.0,
+    expires_at_ms=int(time.time() * 1000) + 300_000,
 ))
 
 handle = khqr.md5(qr)

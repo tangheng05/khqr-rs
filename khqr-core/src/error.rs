@@ -79,6 +79,11 @@ pub enum KhqrError {
         /// The rejected value.
         value: String,
     },
+    /// A single use QR is past its expiry.
+    Expired {
+        /// The expiry, in epoch milliseconds.
+        expires_at_ms: u64,
+    },
     /// A value was longer than a two digit length field can express.
     ValueTooLong {
         /// The tag being written.
@@ -142,6 +147,9 @@ impl fmt::Display for KhqrError {
             }
             Self::InvalidField { field, value } => {
                 write!(f, "{field} {value:?} is not valid")
+            }
+            Self::Expired { expires_at_ms } => {
+                write!(f, "qr expired at {expires_at_ms} ms")
             }
         }
     }
