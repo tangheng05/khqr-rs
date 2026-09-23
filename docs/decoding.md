@@ -70,6 +70,10 @@ would pass.
 `decoded.currency()` gives you a typed `Currency` when tag `53` held a code
 this library knows, and `None` otherwise.
 
+`decoded.is_expired(now_ms)` checks the tag `99` expiry against a time you
+pass in, since the library has no clock. A payload with no expiry never
+expires.
+
 ## Just checking the checksum
 
 `verify_crc` is cheaper than a full decode and does not allocate a struct:

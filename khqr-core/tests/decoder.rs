@@ -295,3 +295,18 @@ fn utf16_lengths_leave_no_room_for_a_second_reading() {
         Err(KhqrError::DuplicateTag { .. })
     ));
 }
+
+#[test]
+fn expiry_is_judged_against_the_time_given() {
+    let decoded = decode(common::ABA_MERCHANT).expect("vector must decode");
+
+    assert!(!decoded.is_expired(1_759_805_525_337));
+    assert!(decoded.is_expired(1_759_805_525_338));
+}
+
+#[test]
+fn a_payload_without_an_expiry_never_expires() {
+    let decoded = decode(common::INDIVIDUAL_KHR_500).expect("vector must decode");
+
+    assert!(!decoded.is_expired(u64::MAX));
+}

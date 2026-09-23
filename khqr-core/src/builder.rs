@@ -361,6 +361,9 @@ impl KhqrBuilder {
         if let Some(union_pay) = &self.union_pay_merchant {
             capped(union_pay, "unionpay merchant", MAX_UNION_PAY)?;
             printable(union_pay, "unionpay merchant")?;
+            if self.currency == Currency::Usd {
+                return Err(invalid("unionpay merchant with usd currency", union_pay));
+            }
         }
         for (_, field, value) in self.additional.fields() {
             if let Some(value) = value {
@@ -374,6 +377,11 @@ impl KhqrBuilder {
         ] {
             if let Some(millis) = millis {
                 capped(&millis.to_string(), field, MAX_TIMESTAMP)?;
+            }
+        }
+        if let (Some(created), Some(expires)) = (self.created_at_ms, self.expires_at_ms) {
+            if expires < created {
+                return Err(invalid("expiration timestamp", &expires.to_string()));
             }
         }
 

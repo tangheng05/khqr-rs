@@ -72,6 +72,11 @@ impl DecodedKhqr {
 
         (amount.is_finite() && !amount.is_sign_negative()).then_some(amount)
     }
+
+    /// A payload without an expiry never expires.
+    pub fn is_expired(&self, now_ms: u64) -> bool {
+        self.expires_at_ms.is_some_and(|expires| expires < now_ms)
+    }
 }
 
 /// Reads a complete payload, checksum and all.

@@ -90,6 +90,9 @@ character such as a newline or a null.
 Name and city are required. The category code defaults to `5999`, which means
 a general merchant, and the country code defaults to `KH`.
 
+A UnionPay merchant account only works with riel. Setting one on a dollar QR
+is rejected, matching the official SDK.
+
 The account ID has to look like `name@bank`: one `@`, something on each side,
 and no spaces or control characters.
 
@@ -111,7 +114,8 @@ The preference is two characters, and the name and city obey the same 25 and
 ## Timestamps
 
 `created_at_ms` and `expires_at_ms` are epoch milliseconds. Both go in tag
-`99`, and both are optional here.
+`99`, and both are optional here. When both are set, an expiry earlier than
+the creation time is rejected, as the official SDK does.
 
 The official SDK requires an expiry on any QR with an amount, from npm
 `bakong-khqr` v1.0.18 onward. We do not enforce that, because two of the

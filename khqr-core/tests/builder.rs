@@ -405,3 +405,41 @@ fn lengths_count_utf16_units_like_the_javascript_sdk() {
     assert!(qr.contains("5907\u{1F600} Shop"), "{qr}");
     assert!(verify_crc(&qr));
 }
+
+#[test]
+fn a_unionpay_merchant_cannot_take_dollars() {
+    let result = Khqr::merchant("shop@aclb")
+        .union_pay_merchant("UPI-123456")
+        .merchant_name("Shop")
+        .merchant_city("Phnom Penh")
+        .currency(Currency::Usd)
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(KhqrError::InvalidField {
+            field: "unionpay merchant with usd currency",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn an_expiry_before_the_creation_time_is_rejected() {
+    let base = || {
+        Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .amount(500.0)
+            .created_at_ms(CREATED_AT)
+    };
+
+    assert!(matches!(
+        base().expires_at_ms(CREATED_AT - 1).build(),
+        Err(KhqrError::InvalidField {
+            field: "expiration timestamp",
+            ..
+        })
+    ));
+    assert!(base().expires_at_ms(CREATED_AT).build().is_ok());
+}

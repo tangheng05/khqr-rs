@@ -5,6 +5,17 @@ behaviour can change in any release, including a patch: 0.1.1 both raised the
 minimum Rust version and made the decoder reject payloads it used to accept.
 Pin `"=0.2.0"` if you would rather review each change.
 
+## Unreleased
+
+### Added
+
+- `DecodedKhqr::is_expired(now_ms)`.
+
+### Changed
+
+- The builder rejects UnionPay on a dollar QR and an expiry before the
+  creation time, matching the official SDK.
+
 ## 0.2.0
 
 ### Added
