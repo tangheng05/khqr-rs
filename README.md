@@ -258,7 +258,7 @@ Minimum supported Rust version is 1.88, checked in CI against that exact
 toolchain.
 
 Before 1.0 any release may change behaviour, including a patch. The snippets
-here use `"0.4"`; pin `"=0.4.0"` instead if you would rather review each
+here use `"0.4"`; pin `"=0.4.1"` instead if you would rather review each
 change yourself. See [CHANGELOG.md](https://github.com/tangheng05/khqr-rs/blob/main/CHANGELOG.md).
 
 ## License
