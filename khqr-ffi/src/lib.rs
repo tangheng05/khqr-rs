@@ -86,8 +86,13 @@ pub struct KhqrOptions {
     pub merchant_city: String,
     #[uniffi(default = None)]
     pub currency: Option<Currency>,
+    /// Rounded the way the official SDK does, so `500.7` riel becomes `501`.
     #[uniffi(default = None)]
     pub amount: Option<f64>,
+    /// Exact amount in the currency's smallest unit as KHQR writes it: cents
+    /// for dollars, whole riel for riel. Set this or `amount`, not both.
+    #[uniffi(default = None)]
+    pub amount_minor: Option<u64>,
     #[uniffi(default = None)]
     pub account_information: Option<String>,
     #[uniffi(default = None)]
@@ -170,8 +175,15 @@ pub fn generate(options: KhqrOptions) -> Result<String, KhqrError> {
         .merchant_city(&options.merchant_city)
         .currency(options.currency.unwrap_or(Currency::Khr).into());
 
-    if let Some(amount) = options.amount {
-        builder = builder.amount(amount);
+    match (options.amount, options.amount_minor) {
+        (Some(_), Some(_)) => {
+            return Err(KhqrError::Invalid {
+                message: "set amount or amount_minor, not both".to_string(),
+            });
+        }
+        (Some(amount), None) => builder = builder.amount(amount),
+        (None, Some(amount)) => builder = builder.amount_minor(amount),
+        (None, None) => {}
     }
     // Both write sub-tag 01 of the account template, so only one can be set.
     if options.account_information.is_some() && options.merchant_id.is_some() {

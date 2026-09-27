@@ -84,6 +84,10 @@ document.querySelector("img").src = toDataUri(qr, 512);
 Setters mutate the builder rather than returning it. That is deliberate: a
 chained call would move the object and free the handle you were holding.
 
+`amount` rounds the way the official SDK does. If your total is already an
+integer, `builder.amountMinor(1050)` takes cents (or whole riel) and writes it
+exactly, and throws on anything but a positive whole number.
+
 The PNG and SVG renderers account for more than half the bundle, 260KB against
 113KB. If your page already draws QR codes with a JS library, leave them out.
 That build exports no `toSvg`, `toPng` or `toDataUri`, so remove them from your
@@ -130,6 +134,9 @@ handle = khqr.md5(qr)
 
 Everything after the first four fields has a default, so you only name what
 you actually set.
+
+For an exact amount, pass `amount_minor` (cents, or whole riel) instead of
+`amount`. Setting both is an error.
 
 Dart is not one of the languages UniFFI generates. The third party
 `uniffi-dart` bindgen reads the same compiled library, and the Rust side

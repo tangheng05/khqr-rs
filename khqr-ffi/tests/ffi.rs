@@ -16,6 +16,7 @@ fn options(merchant_type: MerchantType, account_id: &str) -> KhqrOptions {
         merchant_city: "PHNOM PENH".to_string(),
         currency: None,
         amount: None,
+        amount_minor: None,
         account_information: None,
         merchant_id: None,
         acquiring_bank: None,
@@ -62,6 +63,33 @@ fn a_dollar_amount_keeps_its_decimals() {
 
     assert!(built.contains("54040.10"));
     assert!(built.contains("5303840"));
+}
+
+#[test]
+fn a_minor_amount_is_written_exactly() {
+    let built = generate(KhqrOptions {
+        currency: Some(Currency::Usd),
+        amount_minor: Some(1050),
+        expires_at_ms: Some(EXPIRES_AT),
+        ..options(MerchantType::Individual, "shop@aclb")
+    })
+    .expect("fields are valid");
+
+    assert!(built.contains("540510.50"));
+}
+
+#[test]
+fn both_amounts_at_once_are_refused() {
+    let error = generate(KhqrOptions {
+        amount: Some(10.5),
+        amount_minor: Some(1050),
+        expires_at_ms: Some(EXPIRES_AT),
+        ..options(MerchantType::Individual, "shop@aclb")
+    })
+    .expect_err("one of them would have been ignored");
+
+    let KhqrError::Invalid { message } = error;
+    assert!(message.contains("not both"), "{message}");
 }
 
 #[test]

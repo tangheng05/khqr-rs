@@ -5,6 +5,15 @@ behaviour can change in any release, including a patch: 0.1.1 both raised the
 minimum Rust version and made the decoder reject payloads it used to accept.
 Pin `"=0.4.0"` if you would rather review each change.
 
+## Unreleased
+
+### Added
+
+- `amountMinor` in `khqr-wasm` and `amount_minor` in `khqr-ffi`'s
+  `KhqrOptions`, the exact integer amount from 0.4.0. `amountMinor` throws on
+  anything but a positive whole number rather than truncating it, and
+  `generate` refuses options that set both `amount` and `amount_minor`.
+
 ## 0.4.0
 
 ### Breaking

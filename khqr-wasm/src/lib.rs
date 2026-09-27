@@ -54,9 +54,27 @@ impl Khqr {
         Ok(())
     }
 
-    /// Setting an amount makes the payload single use.
+    /// Setting an amount makes the payload single use. Rounded the way the
+    /// official SDK does, so `500.7` riel becomes `501`; use `amountMinor` for
+    /// an exact amount.
     pub fn amount(&mut self, value: f64) {
         self.set(|builder| builder.amount(value));
+    }
+
+    /// The amount in the currency's smallest unit as KHQR writes it: cents for
+    /// dollars, whole riel for riel. Written exactly. Throws unless the value is
+    /// a positive whole number.
+    #[wasm_bindgen(js_name = amountMinor)]
+    pub fn amount_minor(&mut self, value: f64) -> Result<(), JsValue> {
+        let amount = whole_amount(value).ok_or_else(|| {
+            JsValue::from_str(&format!(
+                "amountMinor must be a positive whole number, got {value}"
+            ))
+        })?;
+
+        self.set(|builder| builder.amount_minor(amount));
+
+        Ok(())
     }
 
     #[wasm_bindgen(js_name = merchantId)]
@@ -157,6 +175,14 @@ impl Khqr {
             self.builder = Some(apply(builder));
         }
     }
+}
+
+/// A JS number as an exact count, refusing fractions, NaN and anything past
+/// `Number.MAX_SAFE_INTEGER` instead of truncating them the way `as` would.
+fn whole_amount(value: f64) -> Option<u64> {
+    const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
+
+    (value.fract() == 0.0 && (1.0..=MAX_SAFE_INTEGER).contains(&value)).then_some(value as u64)
 }
 
 fn parse_currency(value: &str) -> Option<Currency> {
@@ -392,6 +418,39 @@ mod tests {
 
         assert!(stat.starts_with("000201010211"));
         assert!(dynamic.starts_with("000201010212"));
+    }
+
+    #[test]
+    fn a_minor_amount_is_written_exactly() {
+        let mut qr = Khqr::individual("shop@aclb");
+        qr.merchant_name("Shop");
+        qr.merchant_city("Phnom Penh");
+        qr.currency("USD").expect("known currency");
+        qr.amount_minor(1050.0).expect("whole number");
+        qr.expires_at_ms(1_739_496_078_722.0);
+
+        let payload = qr.build().expect("fields are valid");
+
+        assert!(payload.contains("540510.50"));
+    }
+
+    #[test]
+    fn only_positive_whole_numbers_are_minor_amounts() {
+        assert_eq!(whole_amount(1.0), Some(1));
+        assert_eq!(
+            whole_amount(9_007_199_254_740_991.0),
+            Some(9_007_199_254_740_991)
+        );
+        for value in [
+            0.0,
+            -1.0,
+            10.5,
+            f64::NAN,
+            f64::INFINITY,
+            9_007_199_254_740_992.0,
+        ] {
+            assert_eq!(whole_amount(value), None, "{value}");
+        }
     }
 
     #[test]

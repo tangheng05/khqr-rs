@@ -73,6 +73,12 @@ try {
   checkThrows("amount without expiry throws", () => {
     const x = Khqr.individual("shop@aclb"); x.merchantName("S"); x.merchantCity("P"); x.amount(1); x.build();
   });
+  const m = Khqr.individual("shop@aclb");
+  m.merchantName("Shop"); m.merchantCity("Phnom Penh");
+  m.currency("USD"); m.amountMinor(29); m.expiresAtMs(1739496078722);
+  check("amountMinor writes cents exactly", m.build().includes("54040.29"), true);
+  checkThrows("amountMinor refuses a fraction", () => { m.amountMinor(10.5); });
+  checkThrows("amountMinor refuses zero", () => { m.amountMinor(0); });
   checkThrows("unknown currency throws", () => { c.currency("dollar"); });
   checkThrows("bad account id throws", () => {
     const x = Khqr.individual("no-bank"); x.merchantName("S"); x.merchantCity("P"); x.build();
