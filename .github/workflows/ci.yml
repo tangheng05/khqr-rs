@@ -24,6 +24,7 @@ jobs:
       - run: cargo test -p khqr-core
       - run: cargo test -p khqr-core --no-default-features
       - run: cargo check -p khqr-api --no-default-features --features native-tls
+      - run: cargo check -p khqr-api --no-default-features --features rustls-tls-no-provider
       - run: |
           cargo build -p khqr-ffi --features cli
           cargo run -p khqr-ffi --features cli --bin uniffi-bindgen -- generate \

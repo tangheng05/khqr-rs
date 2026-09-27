@@ -5,6 +5,27 @@ behaviour can change in any release, including a patch: 0.1.1 both raised the
 minimum Rust version and made the decoder reject payloads it used to accept.
 Pin `"=0.3.0"` if you would rather review each change.
 
+## Unreleased
+
+### Breaking
+
+- `check_transaction_by_md5_list` and `check_transaction_by_hash_list` return
+  a result per item, `Result<Vec<Result<TxStatus, ApiError>>, ApiError>`. An
+  item the client cannot read, such as an unrecognised status or a `SUCCESS`
+  whose transaction does not parse, no longer fails the other 49. The outer
+  error still covers the batch as a whole, including a reordered answer.
+
+### Added
+
+- `KhqrBuilder::amount_minor`, which takes cents for dollars and whole riel
+  for riel and writes them exactly. `amount` still rounds like the official
+  SDK, so `500.7` riel becomes `501`.
+- `Transaction::amount_minor`, the paid amount in the same units, or `None`
+  when it is missing or more precise than the currency allows.
+- A `rustls-tls-no-provider` feature in `khqr-api`, for applications that
+  already use rustls's `ring` backend. With the default `rustls-tls`, both
+  backends end up in the binary and rustls panics on the first connection.
+
 ## 0.3.0
 
 ### Breaking

@@ -120,10 +120,13 @@ impl BakongClient {
     }
 
     /// Asks about up to 50 payments by MD5 handle, answered in the order given.
+    ///
+    /// The outer error means the whole batch failed. Each item carries its own
+    /// result, so one answer that cannot be read does not hide the others.
     pub async fn check_transaction_by_md5_list(
         &self,
         md5s: &[String],
-    ) -> Result<Vec<TxStatus>, ApiError> {
+    ) -> Result<Vec<Result<TxStatus, ApiError>>, ApiError> {
         self.batch("/v1/check_transaction_by_md5_list", md5s).await
     }
 
@@ -137,7 +140,7 @@ impl BakongClient {
     pub async fn check_transaction_by_hash_list(
         &self,
         hashes: &[String],
-    ) -> Result<Vec<TxStatus>, ApiError> {
+    ) -> Result<Vec<Result<TxStatus, ApiError>>, ApiError> {
         self.batch("/v1/check_transaction_by_hash_list", hashes)
             .await
     }
@@ -225,7 +228,11 @@ impl BakongClient {
         Err(bakong(envelope.error_code, envelope.response_message))
     }
 
-    async fn batch(&self, path: &'static str, items: &[String]) -> Result<Vec<TxStatus>, ApiError> {
+    async fn batch(
+        &self,
+        path: &'static str,
+        items: &[String],
+    ) -> Result<Vec<Result<TxStatus, ApiError>>, ApiError> {
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -265,7 +272,7 @@ impl BakongClient {
             }
         }
 
-        returned.iter().map(status_of).collect()
+        Ok(returned.iter().map(status_of).collect())
     }
 
     async fn post<T: DeserializeOwned>(

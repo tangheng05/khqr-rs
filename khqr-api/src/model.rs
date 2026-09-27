@@ -50,6 +50,29 @@ pub struct Transaction {
     pub receiver_bank_account: Option<String>,
 }
 
+impl Transaction {
+    /// The amount in the currency's smallest unit as KHQR writes it (cents for
+    /// dollars, whole riel for riel), matching `KhqrBuilder::amount_minor`.
+    ///
+    /// `None` when the amount or currency is missing, the currency is neither
+    /// USD nor KHR, or the amount has more precision than the currency allows.
+    pub fn amount_minor(&self) -> Option<u64> {
+        let currency = self.currency.as_deref()?;
+        let scale = if currency.eq_ignore_ascii_case("USD") {
+            100.0
+        } else if currency.eq_ignore_ascii_case("KHR") {
+            1.0
+        } else {
+            return None;
+        };
+
+        let scaled = self.amount? * scale;
+        let rounded = scaled.round();
+        let exact = (scaled - rounded).abs() < 1e-6;
+        (exact && (1.0..1e15).contains(&rounded)).then_some(rounded as u64)
+    }
+}
+
 /// The outcome of asking about one payment.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TxStatus {
@@ -121,4 +144,36 @@ pub(crate) struct Token {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Deeplink {
     pub short_link: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn paid(amount: Option<f64>, currency: Option<&str>) -> Transaction {
+        serde_json::from_value(serde_json::json!({
+            "hash": "h",
+            "amount": amount,
+            "currency": currency,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn amounts_convert_to_the_units_the_builder_takes() {
+        assert_eq!(paid(Some(0.29), Some("USD")).amount_minor(), Some(29));
+        assert_eq!(paid(Some(10.1), Some("usd")).amount_minor(), Some(1010));
+        assert_eq!(paid(Some(5000.0), Some("KHR")).amount_minor(), Some(5000));
+    }
+
+    #[test]
+    fn unusable_amounts_are_none_rather_than_rounded() {
+        assert_eq!(paid(Some(500.7), Some("KHR")).amount_minor(), None);
+        assert_eq!(paid(Some(1.234), Some("USD")).amount_minor(), None);
+        assert_eq!(paid(Some(0.0), Some("USD")).amount_minor(), None);
+        assert_eq!(paid(Some(-1.0), Some("USD")).amount_minor(), None);
+        assert_eq!(paid(Some(10.0), Some("EUR")).amount_minor(), None);
+        assert_eq!(paid(None, Some("USD")).amount_minor(), None);
+        assert_eq!(paid(Some(10.0), None).amount_minor(), None);
+    }
 }

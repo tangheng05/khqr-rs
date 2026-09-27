@@ -94,9 +94,12 @@ async fn a_batch_keeps_the_per_item_status() {
     let statuses = client.check_transaction_by_md5_list(&md5s).await.unwrap();
 
     assert_eq!(statuses.len(), 3);
-    assert_eq!(statuses[0].transaction().unwrap().hash, "aaa");
-    assert_eq!(statuses[1], TxStatus::NotFound);
-    assert_eq!(statuses[2], TxStatus::StaticQr);
+    assert_eq!(
+        statuses[0].as_ref().unwrap().transaction().unwrap().hash,
+        "aaa"
+    );
+    assert!(matches!(statuses[1], Ok(TxStatus::NotFound)));
+    assert!(matches!(statuses[2], Ok(TxStatus::StaticQr)));
 }
 
 #[tokio::test]
@@ -376,7 +379,8 @@ async fn a_paid_item_that_cannot_be_read_is_an_error_not_a_miss() {
     let client = BakongClient::with_base_url(server.uri(), "token");
     let md5s = vec!["a".to_string()];
 
-    match client.check_transaction_by_md5_list(&md5s).await {
+    let statuses = client.check_transaction_by_md5_list(&md5s).await.unwrap();
+    match &statuses[0] {
         Err(ApiError::Bakong { message, .. }) => {
             assert!(message.contains("could not be read"), "{message}");
         }
@@ -385,13 +389,43 @@ async fn a_paid_item_that_cannot_be_read_is_an_error_not_a_miss() {
 }
 
 #[tokio::test]
+async fn one_unreadable_item_does_not_hide_the_rest_of_the_batch() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "/v1/check_transaction_by_md5_list",
+        json!({
+            "responseCode": 0,
+            "data": [
+                { "md5": "a", "status": "SUCCESS", "amount": 1.5 },
+                { "md5": "b", "status": "SUCCESS", "hash": "bbb" },
+                { "md5": "c", "status": "NOT_FOUND" }
+            ]
+        }),
+    )
+    .await;
+
+    let client = BakongClient::with_base_url(server.uri(), "token");
+    let md5s = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+    let statuses = client.check_transaction_by_md5_list(&md5s).await.unwrap();
+
+    assert!(statuses[0].is_err());
+    assert_eq!(
+        statuses[1].as_ref().unwrap().transaction().unwrap().hash,
+        "bbb"
+    );
+    assert!(matches!(statuses[2], Ok(TxStatus::NotFound)));
+}
+
+#[tokio::test]
 async fn an_empty_batch_makes_no_request() {
     let client = BakongClient::with_base_url("http://127.0.0.1:1", "token");
 
-    assert_eq!(
-        client.check_transaction_by_md5_list(&[]).await.unwrap(),
-        Vec::new()
-    );
+    assert!(client
+        .check_transaction_by_md5_list(&[])
+        .await
+        .unwrap()
+        .is_empty());
 }
 
 #[tokio::test]
@@ -463,7 +497,8 @@ async fn an_unrecognised_batch_status_is_refused() {
     let client = BakongClient::with_base_url(server.uri(), "token");
     let md5s = vec!["a".to_string()];
 
-    assert!(client.check_transaction_by_md5_list(&md5s).await.is_err());
+    let statuses = client.check_transaction_by_md5_list(&md5s).await.unwrap();
+    assert!(statuses[0].is_err());
 }
 
 #[tokio::test]

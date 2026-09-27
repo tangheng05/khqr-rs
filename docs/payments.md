@@ -87,15 +87,34 @@ optional because Bakong leaves them null when they do not apply.
 Unknown fields are ignored rather than rejected, so a new one Bakong adds will
 not break decoding.
 
+`amount` is a float in major units. `transaction.amount_minor()` gives it in
+the units `KhqrBuilder::amount_minor` takes (cents for dollars, riel for riel),
+or `None` if it is missing or has more precision than the currency allows, so
+you can compare it with your order total without float arithmetic.
+
+`created_date_ms` is when the payer sent the money and `acknowledged_date_ms`
+when Bakong recorded it, which can be later. To decide whether a QR was paid
+before it expired, compare `created_date_ms`.
+
 ## Asking about many at once
 
 ```rust
 let handles = vec![first, second, third];
-let statuses = client.check_transaction_by_md5_list(&handles).await?;
+for (handle, status) in handles.iter().zip(client.check_transaction_by_md5_list(&handles).await?) {
+    match status {
+        Ok(TxStatus::Paid(transaction)) => println!("{handle} paid {}", transaction.hash),
+        Ok(_) => println!("{handle} not yet"),
+        Err(error) => println!("{handle} could not be read: {error}"),
+    }
+}
 ```
 
 Answers come back in the order you asked. Fifty is the limit, and the client
 checks that before making a request rather than letting Bakong reject it.
+
+The outer `?` is for the batch as a whole: a network failure, a rejected token,
+or an answer that does not line up with the request. Each item then has its own
+result, so one answer the client cannot read does not hide the other 49.
 
 ## Every endpoint
 
@@ -188,7 +207,21 @@ message from Bakong is preserved rather than replaced with a status code.
 rather use the platform's:
 
 ```toml
-khqr-api = { version = "0.3", default-features = false, features = ["native-tls"] }
+khqr-api = { version = "0.4", default-features = false, features = ["native-tls"] }
+```
+
+The default `rustls-tls` brings rustls's `aws-lc-rs` backend. If your
+application already enables the `ring` backend (through sqlx or hyper-rustls,
+say), both end up in the binary and rustls refuses to pick one, panicking on
+the first connection. Use `rustls-tls-no-provider` instead and install the
+backend you want once at startup, before creating the client:
+
+```toml
+khqr-api = { version = "0.4", default-features = false, features = ["rustls-tls-no-provider"] }
+```
+
+```rust
+rustls::crypto::ring::default_provider().install_default().ok();
 ```
 
 ## Keep the token on your server

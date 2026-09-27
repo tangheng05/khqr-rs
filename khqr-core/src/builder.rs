@@ -14,6 +14,12 @@ const MAX_SCALED_AMOUNT: f64 = 1e15;
 const DEFAULT_CATEGORY_CODE: &str = "5999";
 const DEFAULT_COUNTRY_CODE: &str = "KH";
 
+#[derive(Debug, Clone, Copy)]
+enum Amount {
+    Float(f64),
+    Minor(u64),
+}
+
 #[derive(Debug, Clone, Default)]
 struct AdditionalData {
     bill_number: Option<String>,
@@ -188,7 +194,7 @@ pub struct KhqrBuilder {
     union_pay_merchant: Option<String>,
     merchant_category_code: Option<String>,
     currency: Currency,
-    amount: Option<f64>,
+    amount: Option<Amount>,
     country_code: Option<String>,
     merchant_name: Option<String>,
     merchant_city: Option<String>,
@@ -257,8 +263,21 @@ impl KhqrBuilder {
 
     /// Transaction amount. Setting one makes the payload single use and
     /// requires an expiry.
+    ///
+    /// Rounded to the currency's decimals the way the official SDK does, so
+    /// `500.7` riel is written as `501`. Use [`KhqrBuilder::amount_minor`] when
+    /// the amount comes from money kept as integers.
     pub fn amount(mut self, amount: f64) -> Self {
-        self.amount = Some(amount);
+        self.amount = Some(Amount::Float(amount));
+        self
+    }
+
+    /// Transaction amount in the currency's smallest unit as KHQR writes it:
+    /// cents for dollars, whole riel for riel. Written exactly, never rounded.
+    /// Like [`KhqrBuilder::amount`], it makes the payload single use and
+    /// requires an expiry.
+    pub fn amount_minor(mut self, amount: u64) -> Self {
+        self.amount = Some(Amount::Minor(amount));
         self
     }
 
@@ -431,7 +450,8 @@ impl KhqrBuilder {
         }
 
         let amount = match self.amount {
-            Some(amount) => Some(format_amount(amount, self.currency)?),
+            Some(Amount::Float(amount)) => Some(format_amount(amount, self.currency)?),
+            Some(Amount::Minor(amount)) => Some(format_minor(amount, self.currency)?),
             None => None,
         };
 
@@ -509,6 +529,24 @@ fn printable(value: &str, field: &'static str) -> Result<(), KhqrError> {
 /// Ties round away from zero to match the reference SDK's `toFixed`. Rust's
 /// float formatting rounds them to even instead, which would put a different
 /// amount, and so a different checksum, on the wire for values like `500.5`.
+fn format_minor(amount: u64, currency: Currency) -> Result<String, KhqrError> {
+    if amount == 0 {
+        return Err(invalid("amount", "0"));
+    }
+
+    let text = match currency.decimals() {
+        0 => amount.to_string(),
+        decimals => {
+            let scale = 10u64.pow(decimals as u32);
+            format!("{}.{:0decimals$}", amount / scale, amount % scale)
+        }
+    };
+
+    capped(&text, "amount", MAX_AMOUNT)?;
+
+    Ok(text)
+}
+
 fn format_amount(amount: f64, currency: Currency) -> Result<String, KhqrError> {
     if !amount.is_finite() || amount.is_sign_negative() {
         return Err(invalid("amount", &amount.to_string()));
@@ -582,6 +620,49 @@ fn carry(digits: &mut Vec<u8>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn minor_amounts_are_written_exactly() {
+        assert_eq!(format_minor(1, Currency::Usd).unwrap(), "0.01");
+        assert_eq!(format_minor(1050, Currency::Usd).unwrap(), "10.50");
+        assert_eq!(format_minor(123_456, Currency::Usd).unwrap(), "1234.56");
+        assert_eq!(format_minor(5000, Currency::Khr).unwrap(), "5000");
+    }
+
+    #[test]
+    fn minor_amounts_reject_zero_and_overlong_values() {
+        assert!(format_minor(0, Currency::Usd).is_err());
+        assert!(format_minor(10_000_000_000_000, Currency::Khr).is_err());
+        assert!(format_minor(9_999_999_999_999, Currency::Khr).is_ok());
+        assert!(format_minor(100_000_000_000_000, Currency::Usd).is_err());
+    }
+
+    #[test]
+    fn a_minor_amount_round_trips_through_a_payload() {
+        let qr = Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .currency(Currency::Usd)
+            .amount_minor(29)
+            .expires_at_ms(1_800_000_000_000)
+            .build()
+            .unwrap()
+            .to_qr_string()
+            .unwrap();
+
+        let decoded = crate::decode(&qr).unwrap();
+        assert_eq!(decoded.transaction_amount.as_deref(), Some("0.29"));
+    }
+
+    #[test]
+    fn a_minor_amount_still_needs_an_expiry() {
+        let result = Khqr::individual("shop@aclb")
+            .merchant_name("Shop")
+            .merchant_city("Phnom Penh")
+            .amount_minor(5000)
+            .build();
+        assert!(result.is_err());
+    }
 
     #[test]
     fn riel_amounts_carry_no_decimals() {

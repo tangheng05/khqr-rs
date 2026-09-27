@@ -22,6 +22,22 @@ fn getting_started_snippet() -> Result<(), KhqrError> {
 }
 
 #[test]
+fn exact_amount_snippet() -> Result<(), KhqrError> {
+    let now_ms = 1_739_495_778_722;
+    let qr = Khqr::individual("shop@aclb")
+        .merchant_name("Coffee Klaing")
+        .merchant_city("Phnom Penh")
+        .currency(Currency::Usd)
+        .amount_minor(1050)
+        .expires_at_ms(now_ms + 300_000)
+        .build()?
+        .to_qr_string()?;
+
+    assert!(qr.contains("540510.50"));
+    Ok(())
+}
+
+#[test]
 fn generating_snippet() -> Result<(), KhqrError> {
     let now_ms = 1_739_495_778_722;
     let qr = Khqr::merchant("shop@aclb")

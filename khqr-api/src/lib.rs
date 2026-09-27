@@ -7,9 +7,13 @@
 
 // Every Bakong URL is https, so a build with no TLS backend compiles and then
 // fails every request at runtime. Refuse it at compile time instead.
-#[cfg(not(any(feature = "rustls-tls", feature = "native-tls")))]
+#[cfg(not(any(
+    feature = "rustls-tls",
+    feature = "rustls-tls-no-provider",
+    feature = "native-tls"
+)))]
 compile_error!(
-    "khqr-api needs a TLS backend: enable either the `rustls-tls` or the `native-tls` feature"
+    "khqr-api needs a TLS backend: enable `rustls-tls`, `rustls-tls-no-provider` or `native-tls`"
 );
 
 mod backoff;

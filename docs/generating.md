@@ -59,6 +59,25 @@ implementation, so the formatting is not optional here.
 
 Riel is the default. Negative amounts, infinities and NaN are rejected.
 
+`amount` rounds the way the official SDK's `toFixed` does, so `500.7` riel
+quietly becomes `501`. If your order total is already an integer, as money
+should be, pass it with `amount_minor` instead. It takes cents for dollars and
+whole riel for riel, and writes exactly that:
+
+```rust
+let qr = Khqr::individual("shop@aclb")
+    .merchant_name("Coffee Klaing")
+    .merchant_city("Phnom Penh")
+    .currency(Currency::Usd)
+    .amount_minor(1050)
+    .expires_at_ms(now_ms + 300_000)
+    .build()?
+    .to_qr_string()?;
+```
+
+`1050` becomes `10.50`. Nothing is rounded, and zero or an amount longer than
+13 characters is an error.
+
 ## Fields and their limits
 
 These come from the reference SDK and are enforced in `build()`.
