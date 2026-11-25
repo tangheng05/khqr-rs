@@ -5,6 +5,22 @@ behaviour can change in any release, including a patch: 0.1.1 both raised the
 minimum Rust version and made the decoder reject payloads it used to accept.
 Pin `"=0.4.1"` if you would rather review each change.
 
+## Unreleased
+
+### Security
+
+- Updated dependencies to clear 13 RustSec advisories in the lockfile,
+  mostly in `rustls`, `rustls-webpki`, `quinn-proto` and `url`, plus the
+  unsound `AsyncFd` constructors in `tokio`. The CLI now requires
+  `tokio >= 1.54.1`.
+
+### Changed
+
+- `qrcode` 0.15 and `md-5` 0.11. SVGs draw the same modules but the markup
+  differs: the background is a `<path>` rather than a `<rect>`, and the files
+  are about 18% smaller. PNGs are byte for byte the same.
+- `From<ErrorCorrection>` now targets `qrcode` 0.15's `EcLevel`.
+
 ## 0.4.1
 
 ### Added
